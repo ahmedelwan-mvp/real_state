@@ -46,11 +46,11 @@ class _ManageLocationsViewState extends State<_ManageLocationsView> {
     return BlocConsumer<ManageLocationsCubit, ManageLocationsState>(
       listener: (context, state) {
         if (state is ManageLocationsFailure) {
-          AppSnackbar.show(context, state.message, isError: true);
+          AppSnackbar.show(context, state.message, type: AppSnackbarType.error);
         } else if (state is ManageLocationsPartialFailure) {
-          AppSnackbar.show(context, state.message, isError: true);
+          AppSnackbar.show(context, state.message, type: AppSnackbarType.error);
         } else if (state is ManageLocationsAccessDenied) {
-          AppSnackbar.show(context, state.message, isError: true);
+          AppSnackbar.show(context, state.message, type: AppSnackbarType.error);
         }
       },
       builder: (context, state) {

@@ -18,12 +18,14 @@ import 'package:real_state/features/notifications/domain/repositories/notificati
 import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
 import 'package:real_state/features/properties/domain/models/property_share_progress.dart';
 import 'package:real_state/features/properties/domain/services/property_share_service.dart';
+import 'package:real_state/features/properties/domain/usecases/restore_property_usecase.dart';
 import 'package:real_state/features/properties/domain/usecases/share_property_pdf_usecase.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_detail_bloc.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_detail_event.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_detail_state.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_bloc.dart';
 import 'package:real_state/features/properties/presentation/utils/property_placeholders.dart';
+import 'package:real_state/core/utils/async_action_guard.dart';
 import 'package:real_state/features/properties/presentation/widgets/property_detail_view.dart';
 import 'package:real_state/features/properties/presentation/widgets/property_request_dialog.dart';
 import 'package:real_state/features/properties/presentation/widgets/property_share_progress_overlay.dart';
@@ -47,11 +49,15 @@ class _PropertyPageState extends State<PropertyPage> {
   int _currentImagesToShow = 0;
   int _totalImages = 0;
   int _lastLoadMoreTriggerCount = -1;
+  late final AsyncActionGuard _mutationGuard;
+  late final AsyncActionGuard _restoreGuard;
   PropertyShareProgress? _currentShareProgress;
 
   @override
   void initState() {
     super.initState();
+    _mutationGuard = AsyncActionGuard()..addListener(_onGuardState);
+    _restoreGuard = AsyncActionGuard()..addListener(_onGuardState);
     _imagesCtrl.addListener(_onImagesScroll);
   }
 
@@ -59,7 +65,13 @@ class _PropertyPageState extends State<PropertyPage> {
   void dispose() {
     _imagesCtrl.removeListener(_onImagesScroll);
     _imagesCtrl.dispose();
+    _mutationGuard.dispose();
+    _restoreGuard.dispose();
     super.dispose();
+  }
+
+  void _onGuardState() {
+    if (mounted) setState(() {});
   }
 
   void _onImagesScroll() {
@@ -86,6 +98,7 @@ class _PropertyPageState extends State<PropertyPage> {
         context.read<UsersRepository>(),
         context.read<PropertyMutationsBloc>(),
         sharePropertyPdfUseCase: context.read<SharePropertyPdfUseCase>(),
+        restorePropertyUseCase: context.read<RestorePropertyUseCase>(),
       )..add(PropertyDetailStarted(widget.id)),
       child: BlocListener<PropertyDetailBloc, PropertyDetailState>(
         listenWhen: (prev, curr) =>
@@ -108,14 +121,38 @@ class _PropertyPageState extends State<PropertyPage> {
           if (state is PropertyDetailShareFailure) {
             if (!mounted) return;
             setState(() => _currentShareProgress = null);
-            AppSnackbar.show(context, state.message, isError: true);
+            AppSnackbar.show(
+              context,
+              state.message,
+              type: AppSnackbarType.error,
+            );
             return;
           }
           if (state is PropertyDetailActionSuccess && state.message != null) {
-            AppSnackbar.show(context, state.message!, isError: state.isError);
+            final message = state.message!;
+            final archiveMessage = 'property_archived_success'.tr();
+            if (message == archiveMessage) {
+              AppSnackbar.show(
+                context,
+                message,
+                type: AppSnackbarType.warning,
+                actionLabel: 'undo'.tr(),
+                onAction: () => _requestRestore(),
+              );
+            } else {
+              final type = state.isError
+                  ? AppSnackbarType.error
+                  : AppSnackbarType.success;
+              AppSnackbar.show(context, message, type: type);
+            }
+            return;
           }
           if (state is PropertyDetailFailure) {
-            AppSnackbar.show(context, state.message, isError: true);
+            AppSnackbar.show(
+              context,
+              state.message,
+              type: AppSnackbarType.error,
+            );
           }
         },
         child: BlocBuilder<PropertyDetailBloc, PropertyDetailState>(
@@ -187,21 +224,25 @@ class _PropertyPageState extends State<PropertyPage> {
                       },
                     ),
                   if (loaded != null && canArchiveOrDelete)
-                    PopupMenuButton<String>(
-                      onSelected: (v) {
-                        if (v == 'archive') _archive(context);
-                        if (v == 'delete') _delete(context);
-                      },
-                      itemBuilder: (_) => [
-                        PopupMenuItem(
-                          value: 'archive',
-                          child: Text('archive'.tr()),
-                        ),
-                        PopupMenuItem(
-                          value: 'delete',
-                          child: Text('delete'.tr()),
-                        ),
-                      ],
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _mutationGuard,
+                      builder: (c, isBusy, _) => PopupMenuButton<String>(
+                        enabled: !isBusy,
+                        onSelected: (v) {
+                          if (v == 'archive') _archive(context);
+                          if (v == 'delete') _delete(context);
+                        },
+                        itemBuilder: (_) => [
+                          PopupMenuItem(
+                            value: 'archive',
+                            child: Text('archive'.tr()),
+                          ),
+                          PopupMenuItem(
+                            value: 'delete',
+                            child: Text('delete'.tr()),
+                          ),
+                        ],
+                      ),
                     ),
                 ],
               ),
@@ -254,7 +295,9 @@ class _PropertyPageState extends State<PropertyPage> {
               children: [
                 scaffold,
                 if (_currentShareProgress != null)
-                  PropertyShareProgressOverlay(progress: _currentShareProgress!),
+                  PropertyShareProgressOverlay(
+                    progress: _currentShareProgress!,
+                  ),
               ],
             );
           },
@@ -328,8 +371,8 @@ class _PropertyPageState extends State<PropertyPage> {
                 onTap: () {
                   context.pop();
                   context.read<PropertyDetailBloc>().add(
-                        PropertyShareImagesRequested(context),
-                      );
+                    PropertyShareImagesRequested(context),
+                  );
                 },
               ),
               ListTile(
@@ -362,7 +405,9 @@ class _PropertyPageState extends State<PropertyPage> {
       cancelLabelKey: 'cancel',
     );
     if (result != AppConfirmResult.confirmed) return;
-    context.read<PropertyDetailBloc>().add(const PropertyArchiveRequested());
+    await _mutationGuard.run(() async {
+      context.read<PropertyDetailBloc>().add(const PropertyArchiveRequested());
+    });
   }
 
   Future<void> _delete(BuildContext context) async {
@@ -375,12 +420,20 @@ class _PropertyPageState extends State<PropertyPage> {
       isDestructive: true,
     );
     if (result != AppConfirmResult.confirmed) return;
-    context.read<PropertyDetailBloc>().add(const PropertyDeleteRequested());
-    final state = context.read<PropertyDetailBloc>().state;
-    final wasSuccess = state is PropertyDetailActionSuccess && !state.isError;
-    if (wasSuccess && mounted) {
-      context.pop();
-    }
+    await _mutationGuard.run(() async {
+      context.read<PropertyDetailBloc>().add(const PropertyDeleteRequested());
+      final state = context.read<PropertyDetailBloc>().state;
+      final wasSuccess = state is PropertyDetailActionSuccess && !state.isError;
+      if (wasSuccess && mounted) {
+        context.pop();
+      }
+    });
+  }
+
+  Future<void> _requestRestore() async {
+    await _restoreGuard.run(() async {
+      context.read<PropertyDetailBloc>().add(const PropertyRestoreRequested());
+    });
   }
 
   void _syncImagesPagination({
@@ -395,5 +448,4 @@ class _PropertyPageState extends State<PropertyPage> {
       _lastLoadMoreTriggerCount = -1;
     }
   }
-
 }

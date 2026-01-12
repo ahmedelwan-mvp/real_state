@@ -197,7 +197,11 @@ class _PropertyEditorPageState extends State<PropertyEditorPage> {
       });
     } catch (e, st) {
       if (mounted) {
-        AppSnackbar.show(context, mapErrorMessage(e, stackTrace: st), isError: true);
+        AppSnackbar.show(
+          context,
+          mapErrorMessage(e, stackTrace: st),
+          type: AppSnackbarType.error,
+        );
       }
     }
   }
@@ -235,7 +239,11 @@ class _PropertyEditorPageState extends State<PropertyEditorPage> {
       AppSnackbar.show(context, 'location_created_success'.tr());
     } catch (e) {
       if (mounted) {
-        AppSnackbar.show(context, 'generic_error'.tr(), isError: true);
+        AppSnackbar.show(
+          context,
+          'generic_error'.tr(),
+          type: AppSnackbarType.error,
+        );
       }
     }
   }

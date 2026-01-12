@@ -29,7 +29,11 @@ Future<void> shareMultiplePropertyPdfs({
     role = null;
   }
   if (!canShareProperty(role)) {
-    AppSnackbar.show(context, 'collector_action_not_allowed'.tr(), isError: true);
+    AppSnackbar.show(
+      context,
+      'collector_action_not_allowed'.tr(),
+      type: AppSnackbarType.error,
+    );
     return;
   }
   final service = context.read<PropertyShareService>();
@@ -92,7 +96,7 @@ Future<void> shareMultiplePropertyPdfs({
     AppSnackbar.show(
       context,
       mapErrorMessage(e, stackTrace: st),
-      isError: true,
+      type: AppSnackbarType.error,
     );
   } finally {
     overlayController.hide();

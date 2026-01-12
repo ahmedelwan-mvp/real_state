@@ -48,7 +48,7 @@ extension _PropertyEditorActions on _PropertyEditorPageState {
       AppSnackbar.show(
         context,
         mapErrorMessage(e, stackTrace: st),
-        isError: true,
+        type: AppSnackbarType.error,
       );
     } finally {
       if (mounted)
@@ -75,7 +75,7 @@ extension _PropertyEditorActions on _PropertyEditorPageState {
         AppSnackbar.show(
           context,
           'image_pick_failed'.tr(args: ['$e']),
-          isError: true,
+          type: AppSnackbarType.error,
         );
       }
     }());
@@ -105,19 +105,35 @@ extension _PropertyEditorActions on _PropertyEditorPageState {
   Future<void> _save() async {
     if (_formKey.currentState?.validate() != true) return;
     if (_images.isEmpty) {
-      AppSnackbar.show(context, 'images_required'.tr(), isError: true);
+      AppSnackbar.show(
+        context,
+        'images_required'.tr(),
+        type: AppSnackbarType.error,
+      );
       return;
     }
     if (_locations.isEmpty) {
-      AppSnackbar.show(context, 'no_locations_description'.tr(), isError: true);
+      AppSnackbar.show(
+        context,
+        'no_locations_description'.tr(),
+        type: AppSnackbarType.error,
+      );
       return;
     }
     if (_locationId == null) {
-      AppSnackbar.show(context, 'location_required'.tr(), isError: true);
+      AppSnackbar.show(
+        context,
+        'location_required'.tr(),
+        type: AppSnackbarType.error,
+      );
       return;
     }
     if (_userId == null) {
-      AppSnackbar.show(context, 'missing_user_context'.tr(), isError: true);
+      AppSnackbar.show(
+        context,
+        'missing_user_context'.tr(),
+        type: AppSnackbarType.error,
+      );
       return;
     }
 
@@ -146,7 +162,11 @@ extension _PropertyEditorActions on _PropertyEditorPageState {
       final locationValue = locationUrl.isEmpty ? null : locationUrl;
       final price = Validators.parsePrice(_priceCtrl.text);
       if (price == null || price <= 0) {
-        AppSnackbar.show(context, 'price_invalid'.tr(), isError: true);
+          AppSnackbar.show(
+            context,
+            'price_invalid'.tr(),
+            type: AppSnackbarType.error,
+          );
         return;
       }
 
@@ -215,7 +235,7 @@ extension _PropertyEditorActions on _PropertyEditorPageState {
       AppSnackbar.show(
         context,
         mapErrorMessage(e, stackTrace: st),
-        isError: true,
+        type: AppSnackbarType.error,
       );
     }
   }

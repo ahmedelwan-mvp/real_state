@@ -174,11 +174,11 @@ class NotificationsRepositoryImpl implements NotificationsRepository {
       tokens: tokens,
       title: notification.title,
       body: notification.body,
-      data: _buildDataPayload(notification),
+      notificationData: _buildDataPayload(notification),
     );
   }
 
-  Map<String, String> _buildDataPayload(AppNotification notification) {
+  Map<String, dynamic> _buildDataPayload(AppNotification notification) {
     final map = <String, String>{
       'notificationId': notification.id,
       'type': notification.type.code,

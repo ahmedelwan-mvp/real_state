@@ -144,9 +144,9 @@ class _StubFcmService extends FcmService {
   @override
   Future<void> sendToTokens({
     required List<String> tokens,
-    required Map<String, String> data,
-    String? title,
-    String? body,
+    required String title,
+    required String body,
+    required Map<String, dynamic> notificationData,
   }) async {}
 }
 

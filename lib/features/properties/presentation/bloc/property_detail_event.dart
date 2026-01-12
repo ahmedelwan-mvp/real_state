@@ -35,6 +35,10 @@ class PropertyArchiveRequested extends PropertyDetailEvent {
   const PropertyArchiveRequested();
 }
 
+class PropertyRestoreRequested extends PropertyDetailEvent {
+  const PropertyRestoreRequested();
+}
+
 class PropertyDeleteRequested extends PropertyDetailEvent {
   const PropertyDeleteRequested();
 }

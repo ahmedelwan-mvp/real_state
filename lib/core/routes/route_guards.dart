@@ -15,7 +15,7 @@ class RouteGuards {
     if (role != UserRole.collector) return null;
     final blocked = _isCollectorBlocked(location);
     if (!blocked) return null;
-    AppSnackbar.show(context, 'access_denied_snackbar'.tr(), isError: true);
+    AppSnackbar.show(context, 'access_denied_snackbar'.tr(), type: AppSnackbarType.error);
     return '/main';
   }
 

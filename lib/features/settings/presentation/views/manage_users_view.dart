@@ -61,7 +61,11 @@ class _ManageUsersViewState extends State<ManageUsersView>
       _loadingRole = false;
     });
     if (!_isOwner && mounted) {
-      AppSnackbar.show(context, 'access_denied_owner'.tr(), isError: true);
+      AppSnackbar.show(
+        context,
+        'access_denied_owner'.tr(),
+        type: AppSnackbarType.error,
+      );
     }
   }
 
@@ -91,9 +95,9 @@ class _ManageUsersViewState extends State<ManageUsersView>
       child: BlocConsumer<ManageUsersCubit, ManageUsersState>(
         listener: (context, state) {
           if (state is ManageUsersFailure) {
-            AppSnackbar.show(context, state.message, isError: true);
+            AppSnackbar.show(context, state.message, type: AppSnackbarType.error);
           } else if (state is ManageUsersPartialFailure) {
-            AppSnackbar.show(context, state.message, isError: true);
+            AppSnackbar.show(context, state.message, type: AppSnackbarType.error);
           } else if (state is ManageUsersLoadSuccess) {
             context.read<BrokersListBloc>().add(const BrokersListRefreshed());
           }

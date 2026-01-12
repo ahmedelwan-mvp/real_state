@@ -5,7 +5,7 @@ import 'package:real_state/features/settings/presentation/views/manage_users_vie
 class ManageUsersPage extends StatelessWidget {
   const ManageUsersPage({super.key});
 
-  static const _flow = ManageUsersFlow();
+  static final _flow = ManageUsersFlow();
 
   @override
   Widget build(BuildContext context) {
