@@ -86,11 +86,19 @@ class PropertyPhoneSection extends StatelessWidget {
         mode: LaunchMode.externalApplication,
       );
       if (!launched && context.mounted) {
-        AppSnackbar.show(context, 'something_went_wrong'.tr(), isError: true);
+        AppSnackbar.show(
+          context,
+          'something_went_wrong'.tr(),
+          type: AppSnackbarType.error,
+        );
       }
     } catch (_) {
       if (context.mounted) {
-        AppSnackbar.show(context, 'something_went_wrong'.tr(), isError: true);
+        AppSnackbar.show(
+          context,
+          'something_went_wrong'.tr(),
+          type: AppSnackbarType.error,
+        );
       }
     }
   }

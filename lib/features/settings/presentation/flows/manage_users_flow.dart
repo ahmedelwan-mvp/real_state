@@ -3,13 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:real_state/core/components/app_confirm_dialog.dart';
 import 'package:real_state/core/components/app_snackbar.dart';
+import 'package:real_state/core/utils/async_action_guard.dart';
 import 'package:real_state/features/settings/presentation/bottom_sheets/create_company_user_bottom_sheet.dart';
 import 'package:real_state/features/settings/presentation/cubit/manage_users_cubit.dart';
 import 'package:real_state/features/settings/presentation/dialogs/edit_managed_user_dialog.dart';
 import 'package:real_state/features/users/domain/entities/managed_user.dart';
 
 class ManageUsersFlow {
-  const ManageUsersFlow();
+  ManageUsersFlow() : _deleteGuard = AsyncActionGuard();
+
+  final AsyncActionGuard _deleteGuard;
 
   Future<void> openCreateUserSheet(BuildContext context) async {
     final created = await showModalBottomSheet<bool>(
@@ -49,7 +52,9 @@ class ManageUsersFlow {
       isDestructive: true,
     );
     if (result != AppConfirmResult.confirmed) return;
-    await context.read<ManageUsersCubit>().delete(user.id);
-    AppSnackbar.show(context, 'user_disabled'.tr());
+    await _deleteGuard.run(() async {
+      await context.read<ManageUsersCubit>().delete(user.id);
+      AppSnackbar.show(context, 'user_disabled'.tr());
+    });
   }
 }

@@ -30,6 +30,7 @@ import '../../features/properties/domain/usecases/create_property_usecase.dart';
 import '../../features/properties/domain/usecases/update_property_usecase.dart';
 import '../../features/properties/domain/usecases/archive_property_usecase.dart';
 import '../../features/properties/domain/usecases/delete_property_usecase.dart';
+import '../../features/properties/domain/usecases/restore_property_usecase.dart';
 import '../../features/properties/domain/usecases/share_property_pdf_usecase.dart';
 import '../../features/properties/presentation/bloc/property_mutations_bloc.dart';
 import '../../features/brokers/data/datasources/brokers_remote_datasource.dart';
@@ -152,6 +153,8 @@ class AppDi {
       ArchivePropertyUseCase(propertiesRepository);
   late final DeletePropertyUseCase deletePropertyUseCase =
       DeletePropertyUseCase(propertiesRepository);
+  late final RestorePropertyUseCase restorePropertyUseCase =
+      RestorePropertyUseCase(propertiesRepository);
   late final PropertyShareService propertyShareService = PropertyShareService();
   late final SharePropertyPdfUseCase sharePropertyPdfUseCase =
       SharePropertyPdfUseCase(propertyShareService);
@@ -278,6 +281,9 @@ class AppDi {
       RepositoryProvider<ArchivePropertyUseCase>.value(
         value: archivePropertyUseCase,
       ),
+      RepositoryProvider<RestorePropertyUseCase>.value(
+        value: restorePropertyUseCase,
+      ),
       RepositoryProvider<DeletePropertyUseCase>.value(
         value: deletePropertyUseCase,
       ),
@@ -337,9 +343,6 @@ class AppDi {
   }
 
   AuthRepositoryImpl _createAuthRepoImpl() {
-    return AuthRepositoryImpl(
-      authRemote,
-      fcmService: fcmService,
-    );
+    return AuthRepositoryImpl(authRemote, fcmService: fcmService);
   }
 }

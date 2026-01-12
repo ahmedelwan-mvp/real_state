@@ -11,7 +11,9 @@ import 'package:real_state/core/components/base_gradient_page.dart';
 import 'package:real_state/core/components/app_confirm_dialog.dart';
 import 'package:real_state/core/components/custom_app_bar.dart';
 import 'package:real_state/core/components/empty_state_widget.dart';
-import 'package:real_state/core/components/loading_dialog.dart';
+import 'package:real_state/features/notifications/presentation/cubit/notification_action_cubit.dart';
+import 'package:real_state/features/notifications/presentation/cubit/notification_action_state.dart';
+import 'package:real_state/features/notifications/presentation/models/notification_view_model.dart';
 import 'package:real_state/features/auth/domain/repositories/auth_repository_domain.dart';
 import 'package:real_state/features/models/entities/access_request.dart';
 import 'package:real_state/features/notifications/data/services/fcm_service.dart';
@@ -37,6 +39,7 @@ class NotificationsPage extends StatefulWidget {
 class _NotificationsPageState extends State<NotificationsPage> {
   late final NotificationsBloc _bloc;
   late RefreshController _refreshController;
+  late final NotificationActionCubit _actionCubit;
 
   @override
   void initState() {
@@ -51,19 +54,24 @@ class _NotificationsPageState extends State<NotificationsPage> {
       context.read<AcceptAccessRequestUseCase>(),
       context.read<RejectAccessRequestUseCase>(),
     )..add(const NotificationsStarted());
+    _actionCubit = NotificationActionCubit(_bloc);
   }
 
   @override
   void dispose() {
     _bloc.close();
+    _actionCubit.close();
     _refreshController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: _bloc,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: _bloc),
+        BlocProvider.value(value: _actionCubit),
+      ],
       child: Scaffold(
         appBar: const CustomAppBar(title: 'notifications'),
         body: BaseGradientPage(
@@ -72,8 +80,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
               if (state is NotificationsLoading) {
                 _refreshController.resetNoData();
               }
-              if (state is NotificationsDataState &&
-                  state.infoMessage != null) {
+              if (state is NotificationsDataState && state.infoMessage != null) {
                 AppSnackbar.show(context, state.infoMessage!);
                 context.read<NotificationsBloc>().clearInfo();
               }
@@ -82,7 +89,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 final message = state is NotificationsPartialFailure
                     ? state.message
                     : (state as NotificationsActionFailure).message;
-                AppSnackbar.show(context, message, isError: true);
+                AppSnackbar.show(context, message, type: AppSnackbarType.error);
               }
               if (state is NotificationsDataState) {
                 _refreshController.refreshCompleted();
@@ -98,8 +105,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
             },
             builder: (context, state) {
               final isInitialLoading =
-                  state is NotificationsInitial ||
-                  state is NotificationsLoading;
+                  state is NotificationsInitial || state is NotificationsLoading;
               final dataState = state is NotificationsDataState ? state : null;
               final pendingRequests =
                   dataState?.pendingRequestIds ?? const <String>{};
@@ -120,9 +126,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 );
               }
 
-              final listItems = isInitialLoading
-                  ? _placeholderNotifications(isOwner)
-                  : items;
+              final listItems =
+                  isInitialLoading ? _placeholderNotifications(isOwner) : items;
 
               if (!isInitialLoading && items.isEmpty) {
                 return EmptyStateWidget(
@@ -145,64 +150,89 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     separatorBuilder: (_, __) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final n = listItems[index];
-                      final canNavigate =
-                          !isInitialLoading &&
+                      final summary =
+                          dataState?.propertySummaries[n.propertyId];
+                      final actionStatus = context.select(
+                        (NotificationActionCubit cubit) =>
+                            cubit.statusFor(n.id),
+                      );
+                      final canNavigate = !isInitialLoading &&
                           n.type != AppNotificationType.general &&
                           n.propertyId != null &&
                           n.propertyId!.isNotEmpty;
-                      final onTap = canNavigate
-                          ? () {
-                              context.read<NotificationsBloc>().markRead(n.id);
-                              context.push('/property/${n.propertyId}');
-                            }
-                          : null;
-                      final canAct =
-                          !isInitialLoading &&
+                      final canAct = !isInitialLoading &&
                           n.type == AppNotificationType.accessRequest &&
                           (n.requestId?.isNotEmpty ?? false) &&
                           (n.requestStatus == null ||
                               n.requestStatus == AccessRequestStatus.pending);
                       final allowActions =
                           canAcceptRejectAccessRequests(currentRole) &&
-                          (n.targetUserId != null &&
-                              n.targetUserId == currentUserId);
+                              (n.targetUserId != null &&
+                                  n.targetUserId == currentUserId);
                       final isActionPending =
                           canAct && pendingRequests.contains(n.requestId ?? '');
-                      final summary =
-                          dataState?.propertySummaries[n.propertyId];
+                      final viewModel = NotificationViewModel.fromNotification(
+                        notification: n,
+                        propertySummary: summary,
+                      );
+                      final onTap = canNavigate
+                          ? () {
+                              context
+                                  .read<NotificationActionCubit>()
+                                  .open(
+                                    notificationId: n.id,
+                                    action: () async {
+                                      context
+                                          .read<NotificationsBloc>()
+                                          .markRead(n.id);
+                                      context.push('/property/${n.propertyId}');
+                                    },
+                                  );
+                            }
+                          : null;
+                      final onAccept = allowActions &&
+                              canAct &&
+                              !isActionPending &&
+                              actionStatus == NotificationActionStatus.idle
+                          ? () => context.read<NotificationActionCubit>().accept(
+                                notificationId: n.id,
+                                requestId: n.requestId!,
+                              )
+                          : null;
+                      final onReject = allowActions &&
+                              canAct &&
+                              !isActionPending &&
+                              actionStatus == NotificationActionStatus.idle
+                          ? () async {
+                              final result = await AppConfirmDialog.show(
+                                context,
+                                titleKey: 'reject',
+                                descriptionKey: 'are_you_sure',
+                                confirmLabelKey: 'reject',
+                                cancelLabelKey: 'cancel',
+                                isDestructive: true,
+                              );
+                              if (result == AppConfirmResult.confirmed) {
+                                await context
+                                    .read<NotificationActionCubit>()
+                                    .reject(
+                                      notificationId: n.id,
+                                      requestId: n.requestId!,
+                                    );
+                              }
+                            }
+                          : null;
                       return SlideFadeIn(
                         delay: Duration(milliseconds: 30 * index),
                         child: NotificationCard(
-                          notification: n,
+                          viewModel: viewModel,
                           isOwner: isOwner,
                           isTarget: allowActions,
                           showActions: allowActions,
-                          propertySummary: summary,
+                          actionStatus: actionStatus,
                           onTap: onTap,
-                          isActionInProgress:
-                              isActionPending ||
-                              state is NotificationsActionInProgress,
-                          onAccept: allowActions && canAct && !isActionPending
-                              ? () async => await LoadingDialog.show(
-                                  context,
-                                  bloc.accept(n.id, n.requestId!),
-                                )
-                              : null,
-                          onReject: allowActions && canAct && !isActionPending
-                              ? () async {
-                                  final result = await AppConfirmDialog.show(
-                                    context,
-                                    titleKey: 'reject',
-                                    descriptionKey: 'are_you_sure',
-                                    confirmLabelKey: 'reject',
-                                    cancelLabelKey: 'cancel',
-                                    isDestructive: true,
-                                  );
-                                  if (result == AppConfirmResult.confirmed) {
-                                    await bloc.reject(n.id, n.requestId!);
-                                  }
-                                }
-                              : null,
+                          onAccept: onAccept,
+                          onReject: onReject,
                         ),
                       );
                     },

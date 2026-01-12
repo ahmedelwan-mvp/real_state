@@ -234,7 +234,11 @@ class _PropertyDetailViewState extends State<PropertyDetailView> {
     if (uri == null) return;
     final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!launched && context.mounted) {
-      AppSnackbar.show(context, 'location_unavailable'.tr(), isError: true);
+      AppSnackbar.show(
+        context,
+        'location_unavailable'.tr(),
+        type: AppSnackbarType.error,
+      );
     }
   }
 

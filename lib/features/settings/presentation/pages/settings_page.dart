@@ -29,7 +29,7 @@ class SettingsPage extends StatelessWidget {
       body: BlocConsumer<SettingsCubit, SettingsState>(
         listener: (context, state) {
           if (state is SettingsFailure) {
-            AppSnackbar.show(context, state.message, isError: true);
+            AppSnackbar.show(context, state.message, type: AppSnackbarType.error);
           }
         },
         builder: (context, state) {

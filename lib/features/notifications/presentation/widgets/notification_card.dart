@@ -5,46 +5,72 @@ import 'package:real_state/core/utils/price_formatter.dart';
 import 'package:real_state/core/utils/time_ago.dart';
 import 'package:real_state/features/models/entities/access_request.dart';
 import 'package:real_state/features/notifications/domain/entities/app_notification.dart';
+import 'package:real_state/features/notifications/presentation/cubit/notification_action_state.dart';
 import 'package:real_state/features/notifications/presentation/models/notification_property_summary.dart';
+import 'package:real_state/features/notifications/presentation/models/notification_view_model.dart';
 
 class NotificationCard extends StatelessWidget {
-  final AppNotification notification;
+  const NotificationCard({
+    super.key,
+    required this.viewModel,
+    required this.isOwner,
+    required this.isTarget,
+    this.onTap,
+    this.onAccept,
+    this.onReject,
+    this.showActions = true,
+    this.actionStatus = NotificationActionStatus.idle,
+  });
+
+  final NotificationViewModel viewModel;
   final bool isOwner;
   final bool isTarget;
   final VoidCallback? onTap;
   final VoidCallback? onAccept;
   final VoidCallback? onReject;
-  final NotificationPropertySummary? propertySummary;
-  final bool isActionInProgress;
   final bool showActions;
+  final NotificationActionStatus actionStatus;
 
-  const NotificationCard({
-    super.key,
-    required this.notification,
-    required this.isOwner,
-    required this.isTarget,
-    this.propertySummary,
-    this.onTap,
-    this.onAccept,
-    this.onReject,
-    this.isActionInProgress = false,
-    this.showActions = true,
-  });
+  bool get _isBusy => actionStatus != NotificationActionStatus.idle;
+
+  bool get _showInlineLoader =>
+      actionStatus == NotificationActionStatus.accepting ||
+      actionStatus == NotificationActionStatus.rejecting;
 
   @override
   Widget build(BuildContext context) {
+    final accentColor = Theme.of(context).colorScheme.primary;
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: onTap,
-        child: Padding(padding: const EdgeInsets.all(14), child: _buildContent(context)),
+        onTap: _isBusy ? null : onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 4,
+                  decoration: BoxDecoration(
+                    color: viewModel.isUnread ? accentColor : Colors.transparent,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: _buildContent(context)),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
 
   Widget _buildContent(BuildContext context) {
-    switch (notification.type) {
+    switch (viewModel.notification.type) {
       case AppNotificationType.accessRequest:
         return _buildAccessRequest(context);
       case AppNotificationType.propertyAdded:
@@ -55,14 +81,22 @@ class NotificationCard extends StatelessWidget {
   }
 
   Widget _buildAccessRequest(BuildContext context) {
+    final notification = viewModel.notification;
     final status = notification.requestStatus ?? AccessRequestStatus.pending;
-    final summary = propertySummary;
-    final title = notification.title.isNotEmpty ? notification.title : 'access_request_title'.tr();
+    final summary = viewModel.propertySummary;
+    final title = notification.title.isNotEmpty
+        ? notification.title
+        : 'access_request_title'.tr();
     final subtitle = _propertySubtitle(context, summary);
     final typeLabel = _requestTypeLabel();
     final icon = _requestTypeIcon();
     final price = _priceText(summary);
     final timeLabel = timeAgo(notification.createdAt);
+    final showActionButtons =
+        status == AccessRequestStatus.pending && isOwner && isTarget && showActions;
+    final isActionDisabled = _isBusy;
+    final rejectLoading = actionStatus == NotificationActionStatus.rejecting;
+    final acceptLoading = actionStatus == NotificationActionStatus.accepting;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -74,7 +108,7 @@ class NotificationCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: Theme.of(context).textTheme.titleMedium),
+                  _buildTitleRow(context, title),
                   if (subtitle.isNotEmpty)
                     Text(
                       subtitle,
@@ -121,25 +155,53 @@ class NotificationCard extends StatelessWidget {
           Text(notification.requestMessage!, style: Theme.of(context).textTheme.bodyMedium),
         ],
         const SizedBox(height: 12),
-        if (status == AccessRequestStatus.pending && isOwner && isTarget && showActions)
+        if (_showInlineLoader) ...[
+          const SizedBox(height: 6),
+          const SizedBox(
+            height: 2,
+            child: LinearProgressIndicator(),
+          ),
+        ],
+        if (showActionButtons) ...[
           Row(
             children: [
               PrimaryButton(
                 label: 'accept'.tr(),
                 expand: false,
-
                 radius: 30,
-                isLoading: isActionInProgress,
-                onPressed: isActionInProgress ? null : onAccept,
+                isLoading: acceptLoading,
+                onPressed: isActionDisabled ? null : onAccept,
               ),
               const SizedBox(width: 8),
               OutlinedButton(
-                onPressed: isActionInProgress ? null : onReject,
-                child: Text('reject'.tr()),
+                onPressed: isActionDisabled ? null : onReject,
+                child: SizedBox(
+                  height: 18,
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Opacity(
+                        opacity: rejectLoading ? 0 : 1,
+                        child: Text('reject'.tr()),
+                      ),
+                      if (rejectLoading)
+                        SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
-        const SizedBox(height: 8),
+          const SizedBox(height: 8),
+        ] else
+          const SizedBox(height: 8),
         Text(
           timeLabel,
           style: Theme.of(
@@ -151,10 +213,12 @@ class NotificationCard extends StatelessWidget {
   }
 
   Widget _buildPropertyAdded(BuildContext context) {
-    final summary = propertySummary;
+    final notification = viewModel.notification;
+    final summary = viewModel.propertySummary;
     final fallbackTitle = notification.title == notification.propertyId ? null : notification.title;
     final title = _propertyTitle(context, summary, fallback: fallbackTitle);
     final subtitle = _propertySubtitle(context, summary);
+    final timeLabel = timeAgo(notification.createdAt);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -167,7 +231,7 @@ class NotificationCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: Theme.of(context).textTheme.titleMedium),
+                  _buildTitleRow(context, title),
                   if (subtitle.isNotEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
@@ -196,12 +260,15 @@ class NotificationCard extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          timeAgo(notification.createdAt),
+          timeLabel,
           style: Theme.of(
             context,
           ).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
-        if (notification.body.isNotEmpty) ...[const SizedBox(height: 6), Text(notification.body)],
+        if (viewModel.notification.body.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Text(viewModel.notification.body),
+        ],
       ],
     );
   }
@@ -215,18 +282,38 @@ class NotificationCard extends StatelessWidget {
             const _TypeIcon(icon: Icons.notifications_none),
             const SizedBox(width: 10),
             Expanded(
-              child: Text(notification.title, style: Theme.of(context).textTheme.titleMedium),
+              child: _buildTitleRow(context, viewModel.notification.title),
             ),
           ],
         ),
         const SizedBox(height: 6),
-        if (notification.body.isNotEmpty) Text(notification.body),
+        if (viewModel.notification.body.isNotEmpty)
+          Text(viewModel.notification.body),
         Text(
-          timeAgo(notification.createdAt),
+          timeAgo(viewModel.notification.createdAt),
           style: Theme.of(
             context,
           ).textTheme.labelSmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
         ),
+      ],
+    );
+  }
+
+  Widget _buildTitleRow(BuildContext context, String title) {
+    return Row(
+      children: [
+        Expanded(child: Text(title, style: Theme.of(context).textTheme.titleMedium)),
+        if (viewModel.isUnread) ...[
+          const SizedBox(width: 6),
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+              shape: BoxShape.circle,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -293,7 +380,7 @@ class NotificationCard extends StatelessWidget {
   }
 
   String _requestTypeLabel() {
-    switch (notification.requestType) {
+    switch (viewModel.notification.requestType) {
       case AccessRequestType.phone:
         return 'request_view_phone'.tr();
       case AccessRequestType.images:
@@ -304,7 +391,7 @@ class NotificationCard extends StatelessWidget {
   }
 
   IconData _requestTypeIcon() {
-    switch (notification.requestType) {
+    switch (viewModel.notification.requestType) {
       case AccessRequestType.phone:
         return Icons.phone_in_talk_outlined;
       case AccessRequestType.images:
@@ -326,7 +413,7 @@ class _TypeIcon extends StatelessWidget {
       width: 36,
       height: 36,
       decoration: BoxDecoration(
-        color: scheme.primaryContainer.withValues(alpha: 0.3),
+        color: scheme.primaryContainer.withAlpha(76),
         shape: BoxShape.circle,
       ),
       child: Icon(icon, size: 18, color: scheme.primary),
@@ -336,6 +423,7 @@ class _TypeIcon extends StatelessWidget {
 
 class _LeadingImage extends StatelessWidget {
   final NotificationPropertySummary? summary;
+
   const _LeadingImage(this.summary);
 
   @override

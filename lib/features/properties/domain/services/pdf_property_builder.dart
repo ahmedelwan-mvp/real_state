@@ -5,9 +5,9 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:real_state/features/models/entities/property.dart';
 
 class PdfImageData {
-   final Uint8List bytes;
-   final double width;
-   final double height;
+  final Uint8List bytes;
+  final double width;
+  final double height;
 
   const PdfImageData({
     required this.bytes,
@@ -18,8 +18,8 @@ class PdfImageData {
 
 const double _kPdfPadding = 36.0;
 const double _kPdfLogoSpacing = 24.0;
-const double _kPdfTitleFontSize = 34.0;
-const double _kPdfBodyFontSize = 18.0;
+const double _kPdfTitleFontSize = 36.0;
+const double _kPdfBodyFontSize = 20.0;
 const double _kPdfLineSpacing = 1.7;
 const double _kPdfDetailsLogoFactor = 0.25;
 const double _kPdfLogoPageLogoFactor = 0.45;
@@ -47,18 +47,12 @@ class PdfPropertyBuilder {
       localeCode: localeCode,
       arabicFont: arabicFont,
     );
-    _addLogoPage(
-      doc: doc,
-      logoBytes: logoBytes,
-    );
+    _addLogoPage(doc: doc, logoBytes: logoBytes);
 
     return doc.save();
   }
 
-  void _addLogoPage({
-    required pw.Document doc,
-    required Uint8List? logoBytes,
-  }) {
+  void _addLogoPage({required pw.Document doc, required Uint8List? logoBytes}) {
     if (logoBytes == null) return;
     doc.addPage(
       pw.Page(
@@ -69,7 +63,7 @@ class PdfPropertyBuilder {
         ),
         build: (_) => _buildLogoPage(
           logoBytes: logoBytes,
-          pageHeight: pdf.PdfPageFormat.a4.height,
+          pageFormat: pdf.PdfPageFormat.a4,
         ),
       ),
     );
@@ -120,7 +114,7 @@ class PdfPropertyBuilder {
           localeCode: localeCode,
           arabicFont: arabicFont,
           logoBytes: logoBytes,
-          pageHeight: pdf.PdfPageFormat.a4.height,
+          pageFormat: pdf.PdfPageFormat.a4,
         ),
       ),
     );
@@ -132,8 +126,10 @@ class PdfPropertyBuilder {
     required String? localeCode,
     required pw.Font? arabicFont,
     required Uint8List? logoBytes,
-    required double pageHeight,
+    required pdf.PdfPageFormat pageFormat,
   }) {
+    final pageWidth = pageFormat.availableWidth;
+    final pageHeight = pageFormat.availableHeight;
     final textColor = pdf.PdfColors.grey100;
     final accent = pdf.PdfColors.amber200;
     final arabicFontFallback = arabicFont != null ? [arabicFont] : null;
@@ -153,20 +149,20 @@ class PdfPropertyBuilder {
     final isArabicLocale = localeCode?.toLowerCase().startsWith('ar') ?? false;
     final description = descriptionText.trim();
     final detailsLogoHeight = pageHeight * _kPdfDetailsLogoFactor;
-    pw.Widget localizedText(
-      String text, {
-      pw.TextStyle? style,
-    }) {
+    pw.Widget localizedText(String text, {pw.TextStyle? style}) {
       final resolvedStyle = style ?? bodyStyle;
       final hasArabicCharacters = _containsArabic(text);
       final needsArabicFont = isArabicLocale || hasArabicCharacters;
       final effectiveStyle = resolvedStyle.copyWith(
-        font: needsArabicFont && arabicFont != null ? arabicFont : resolvedStyle.font,
+        font: needsArabicFont && arabicFont != null
+            ? arabicFont
+            : resolvedStyle.font,
         fontFallback: arabicFontFallback ?? resolvedStyle.fontFallback,
         color: resolvedStyle.color,
       );
-      final textDirection =
-          needsArabicFont ? pw.TextDirection.rtl : pw.TextDirection.ltr;
+      final textDirection = needsArabicFont
+          ? pw.TextDirection.rtl
+          : pw.TextDirection.ltr;
       return pw.Directionality(
         textDirection: textDirection,
         child: pw.Text(
@@ -178,8 +174,8 @@ class PdfPropertyBuilder {
     }
 
     return pw.Container(
-      width: double.infinity,
-      height: double.infinity,
+      width: pageWidth,
+      height: pageHeight,
       padding: const pw.EdgeInsets.symmetric(
         horizontal: _kPdfPadding,
         vertical: _kPdfPadding,
@@ -216,25 +212,27 @@ class PdfPropertyBuilder {
 
   pw.Widget _buildLogoPage({
     required Uint8List? logoBytes,
-    required double pageHeight,
+    required pdf.PdfPageFormat pageFormat,
   }) {
     if (logoBytes == null) {
       return pw.SizedBox.shrink();
     }
+    final pageWidth = pageFormat.availableWidth;
+    final pageHeight = pageFormat.availableHeight;
     final logoHeight = pageHeight * _kPdfLogoPageLogoFactor;
     return pw.Container(
-      width: double.infinity,
-      height: double.infinity,
+      width: pageWidth,
+      height: pageHeight,
       padding: pw.EdgeInsets.zero,
-      child: pw.Center(
-        child: pw.Container(
+      alignment: pw.Alignment.center,
+      child: pw.Container(
+        height: logoHeight,
+        width: pageWidth,
+        alignment: pw.Alignment.center,
+        child: pw.Image(
+          pw.MemoryImage(logoBytes),
           height: logoHeight,
-          alignment: pw.Alignment.center,
-          child: pw.Image(
-            pw.MemoryImage(logoBytes),
-            height: logoHeight,
-            fit: pw.BoxFit.contain,
-          ),
+          fit: pw.BoxFit.contain,
         ),
       ),
     );

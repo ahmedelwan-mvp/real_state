@@ -34,7 +34,7 @@ class LoginPage extends StatelessWidget {
 
           if (state.status == AuthStatus.failure && state.failure != null) {
             final message = mapFailureToMessage(state.failure!);
-            AppSnackbar.show(context, message, isError: true);
+            AppSnackbar.show(context, message, type: AppSnackbarType.error);
           }
         },
         child: Scaffold(

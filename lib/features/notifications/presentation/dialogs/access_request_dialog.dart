@@ -33,7 +33,7 @@ class AccessRequestDialog extends StatelessWidget {
           Navigator.of(context, rootNavigator: true).maybePop();
           onCompleted?.call();
         } else if (state is AccessRequestActionFailure) {
-          AppSnackbar.show(context, state.message, isError: true);
+          AppSnackbar.show(context, state.message, type: AppSnackbarType.error);
         }
       },
       builder: (context, state) {
@@ -127,7 +127,7 @@ class AccessRequestDialog extends StatelessWidget {
                           ),
                         );
                         if (error != null) {
-                          AppSnackbar.show(context, error, isError: true);
+                          AppSnackbar.show(context, error, type: AppSnackbarType.error);
                         }
                       },
                 child: Text('reject'.tr()),
@@ -146,7 +146,7 @@ class AccessRequestDialog extends StatelessWidget {
                           ),
                         );
                         if (error != null) {
-                          AppSnackbar.show(context, error, isError: true);
+                          AppSnackbar.show(context, error, type: AppSnackbarType.error);
                         }
                       },
                 child: Text('accept'.tr()),

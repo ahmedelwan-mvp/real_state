@@ -57,7 +57,7 @@ class AppRouter {
           builder: (c, s) {
             if (!canManageUsers(auth.role)) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                AppSnackbar.show(c, 'access_denied'.tr(), isError: true);
+                AppSnackbar.show(c, 'access_denied'.tr(), type: AppSnackbarType.error);
                 c.go('/main');
               });
               return const SizedBox.shrink();
@@ -70,7 +70,7 @@ class AppRouter {
           builder: (c, s) {
             if (!canManageLocations(auth.role)) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                AppSnackbar.show(c, 'access_denied'.tr(), isError: true);
+                AppSnackbar.show(c, 'access_denied'.tr(), type: AppSnackbarType.error);
                 c.go('/main');
               });
               return const SizedBox.shrink();
@@ -105,7 +105,7 @@ class AppRouter {
             // Assuming access control is same as areas page for now.
             if (!canAccessBrokersRoutes(auth.role)) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                AppSnackbar.show(c, 'access_denied'.tr(), isError: true);
+                AppSnackbar.show(c, 'access_denied'.tr(), type: AppSnackbarType.error);
                 c.go('/main');
               });
               return const SizedBox.shrink();
@@ -131,7 +131,7 @@ class AppRouter {
           builder: (c, s) {
             if (!canAccessBrokersRoutes(auth.role)) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                AppSnackbar.show(c, 'access_denied'.tr(), isError: true);
+                AppSnackbar.show(c, 'access_denied'.tr(), type: AppSnackbarType.error);
                 c.go('/main');
               });
               return const SizedBox.shrink();

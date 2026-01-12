@@ -111,7 +111,7 @@ class _FilteredPropertiesPageState extends State<FilteredPropertiesPage> {
                 state.previous.hasMore
                     ? _refreshController.loadComplete()
                     : _refreshController.loadNoData();
-                AppSnackbar.show(context, state.message, isError: true);
+                AppSnackbar.show(context, state.message, type: AppSnackbarType.error);
               }
             },
             builder: (context, state) {

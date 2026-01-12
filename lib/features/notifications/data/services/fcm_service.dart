@@ -1,12 +1,11 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb_auth;
 import 'package:firebase_core/firebase_core.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:real_state/core/constants/app_collections.dart';
 import 'package:real_state/core/handle_errors/error_mapper.dart';
 import 'package:real_state/features/models/entities/access_request.dart';
@@ -116,37 +115,46 @@ class FcmService {
 
   Future<void> sendToTokens({
     required List<String> tokens,
-    required Map<String, String> data,
-    String? title,
-    String? body,
+    required String title,
+    required String body,
+    required Map<String, dynamic> notificationData,
   }) async {
     if (tokens.isEmpty) return;
-    const serverKey = String.fromEnvironment('FCM_SERVER_KEY');
-    if (serverKey.isEmpty) {
-      debugPrint('FCM server key missing; skipping send.');
+    final functions = FirebaseFunctions.instanceFor(region: 'us-central1');
+    final callable = functions.httpsCallable('sendNotification');
+    try {
+      final result = await callable.call(<String, dynamic>{
+        'tokens': tokens,
+        'title': title,
+        'body': body,
+        'notificationData': notificationData,
+      });
+      _logCallableResult(result.data);
+    } on FirebaseFunctionsException catch (e) {
+      if (e.code == 'not-found') {
+        debugPrint('sendNotification not deployed or wrong project/region');
+      }
+      debugPrint('sendNotification failed (${e.code}): ${e.message}');
+    } catch (e, st) {
+      debugPrint('sendNotification call failed: $e');
+      if (kDebugMode) {
+        debugPrint('Stacktrace: $st');
+      }
+    }
+  }
+
+  void _logCallableResult(Object? data) {
+    if (!kDebugMode) return;
+    if (data is Map<String, dynamic>) {
+      final successCount = data['successCount'] ?? data['success'] ?? 0;
+      final failureCount = data['failureCount'] ?? data['failure'] ?? 0;
+      final errors = data['errors'] as List<dynamic>? ?? const [];
+      debugPrint(
+        'sendNotification result: successCount=$successCount failureCount=$failureCount errors=${errors.length}',
+      );
       return;
     }
-    final payload = {
-      'registration_ids': tokens,
-      'priority': 'high',
-      'notification': {'title': title, 'body': body},
-      'data': data,
-    };
-    try {
-      final res = await http.post(
-        Uri.parse('https://fcm.googleapis.com/fcm/send'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'key=$serverKey',
-        },
-        body: jsonEncode(payload),
-      );
-      if (res.statusCode >= 300) {
-        debugPrint('FCM send failed (${res.statusCode}): ${res.body}');
-      }
-    } catch (e) {
-      debugPrint('FCM send error: $e');
-    }
+    debugPrint('sendNotification result payload: $data');
   }
 
   Future<void> _registerInitialToken(String userId) async {

@@ -19,6 +19,7 @@ import 'package:real_state/features/properties/domain/property_permissions.dart'
 import 'package:real_state/features/properties/domain/services/property_share_service.dart';
 import 'package:real_state/features/properties/domain/usecases/archive_property_usecase.dart';
 import 'package:real_state/features/properties/domain/usecases/delete_property_usecase.dart';
+import 'package:real_state/features/properties/domain/usecases/restore_property_usecase.dart';
 import 'package:real_state/features/properties/domain/usecases/share_property_pdf_usecase.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_detail_event.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_detail_state.dart';
@@ -26,7 +27,8 @@ import 'package:real_state/features/properties/presentation/bloc/property_mutati
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_state.dart';
 import 'package:real_state/features/users/data/repositories/users_repository.dart';
 
-class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> {
+class PropertyDetailBloc
+    extends Bloc<PropertyDetailEvent, PropertyDetailState> {
   final PropertiesRepository _propertiesRepository;
   final AccessRequestsRepository _accessRequestsRepository;
   final AuthRepositoryDomain _authRepository;
@@ -37,6 +39,7 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
   final CreateAccessRequestUseCase _createAccessRequestUseCase;
   final ArchivePropertyUseCase _archivePropertyUseCase;
   final DeletePropertyUseCase _deletePropertyUseCase;
+  final RestorePropertyUseCase _restorePropertyUseCase;
   final SharePropertyPdfUseCase _sharePropertyPdfUseCase;
   final Map<String, String?> _userNameCache = {};
 
@@ -58,24 +61,33 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
     CreateAccessRequestUseCase? createAccessRequestUseCase,
     ArchivePropertyUseCase? archivePropertyUseCase,
     DeletePropertyUseCase? deletePropertyUseCase,
+    RestorePropertyUseCase? restorePropertyUseCase,
     SharePropertyPdfUseCase? sharePropertyPdfUseCase,
   }) : _usersRepository = usersRepository,
        _createAccessRequestUseCase =
            createAccessRequestUseCase ??
            CreateAccessRequestUseCase(
              _accessRequestsRepository,
-             resolveAccessTargetUseCase ?? ResolveAccessRequestTargetUseCase(usersRepository),
+             resolveAccessTargetUseCase ??
+                 ResolveAccessRequestTargetUseCase(usersRepository),
            ),
        _archivePropertyUseCase =
-           archivePropertyUseCase ?? ArchivePropertyUseCase(_propertiesRepository),
+           archivePropertyUseCase ??
+           ArchivePropertyUseCase(_propertiesRepository),
        _deletePropertyUseCase =
-           deletePropertyUseCase ?? DeletePropertyUseCase(_propertiesRepository),
-       _sharePropertyPdfUseCase = sharePropertyPdfUseCase ?? SharePropertyPdfUseCase(_shareService),
+           deletePropertyUseCase ??
+           DeletePropertyUseCase(_propertiesRepository),
+       _restorePropertyUseCase =
+           restorePropertyUseCase ??
+           RestorePropertyUseCase(_propertiesRepository),
+       _sharePropertyPdfUseCase =
+           sharePropertyPdfUseCase ?? SharePropertyPdfUseCase(_shareService),
        super(const PropertyDetailInitial()) {
     on<PropertyDetailStarted>(_onStarted);
     on<PropertyAccessRequested>(_onAccessRequested);
     on<PropertyArchiveRequested>(_onArchive);
     on<PropertyDeleteRequested>(_onDelete);
+    on<PropertyRestoreRequested>(_onRestore);
     on<PropertyShareImagesRequested>(_onShareImages);
     on<PropertySharePdfRequested>(_onSharePdf);
     on<PropertyImagesLoadMoreRequested>(_onImagesLoadMore);
@@ -91,7 +103,10 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
     });
   }
 
-  Future<void> _onStarted(PropertyDetailStarted event, Emitter<PropertyDetailState> emit) async {
+  Future<void> _onStarted(
+    PropertyDetailStarted event,
+    Emitter<PropertyDetailState> emit,
+  ) async {
     _cancelStreams();
     _currentPropertyId = event.propertyId;
     emit(const PropertyDetailLoading());
@@ -101,7 +116,9 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
       final userId = user?.id;
       final role = user?.role;
       final creatorId = property?.createdBy ?? '';
-      final creatorName = creatorId.isNotEmpty ? await _resolveCreatorName(creatorId) : null;
+      final creatorName = creatorId.isNotEmpty
+          ? await _resolveCreatorName(creatorId)
+          : null;
       final imagesToShow = property != null
           ? (property.imageUrls.length >= 3 ? 3 : property.imageUrls.length)
           : 0;
@@ -186,7 +203,12 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
               type: AccessRequestType.images,
             )
             .listen(
-              (r) => add(PropertyAccessRequestUpdated(type: AccessRequestType.images, request: r)),
+              (r) => add(
+                PropertyAccessRequestUpdated(
+                  type: AccessRequestType.images,
+                  request: r,
+                ),
+              ),
             );
         if (emitted.hasPhone) {
           _phoneReqSub = _accessRequestsRepository
@@ -196,7 +218,12 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
                 type: AccessRequestType.phone,
               )
               .listen(
-                (r) => add(PropertyAccessRequestUpdated(type: AccessRequestType.phone, request: r)),
+                (r) => add(
+                  PropertyAccessRequestUpdated(
+                    type: AccessRequestType.phone,
+                    request: r,
+                  ),
+                ),
               );
         }
         if (emitted.hasLocationUrl) {
@@ -207,8 +234,12 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
                 type: AccessRequestType.location,
               )
               .listen(
-                (r) =>
-                    add(PropertyAccessRequestUpdated(type: AccessRequestType.location, request: r)),
+                (r) => add(
+                  PropertyAccessRequestUpdated(
+                    type: AccessRequestType.location,
+                    request: r,
+                  ),
+                ),
               );
         }
       }
@@ -222,7 +253,9 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
     Emitter<PropertyDetailState> emit,
   ) async {
     final current = state;
-    if (current is! PropertyDetailLoaded && current is! PropertyDetailActionSuccess) return;
+    if (current is! PropertyDetailLoaded &&
+        current is! PropertyDetailActionSuccess)
+      return;
     final loaded = current is PropertyDetailLoaded
         ? current
         : (current as PropertyDetailActionSuccess).data;
@@ -240,7 +273,8 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
       return;
     }
     if (event.type == AccessRequestType.phone && !loaded.hasPhone) return;
-    if (event.type == AccessRequestType.location && !loaded.hasLocationUrl) return;
+    if (event.type == AccessRequestType.location && !loaded.hasLocationUrl)
+      return;
 
     try {
       final created = await _createAccessRequestUseCase(
@@ -261,7 +295,9 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
         type: event.type,
         message: event.message?.isEmpty == true ? null : event.message,
       );
-      emit(PropertyDetailActionSuccess(loaded, message: 'request_submitted'.tr()));
+      emit(
+        PropertyDetailActionSuccess(loaded, message: 'request_submitted'.tr()),
+      );
     } catch (e, st) {
       debugPrint(e.toString());
       emit(
@@ -274,9 +310,14 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
     }
   }
 
-  Future<void> _onArchive(PropertyArchiveRequested event, Emitter<PropertyDetailState> emit) async {
+  Future<void> _onArchive(
+    PropertyArchiveRequested event,
+    Emitter<PropertyDetailState> emit,
+  ) async {
     final current = state;
-    if (current is! PropertyDetailLoaded && current is! PropertyDetailActionSuccess) return;
+    if (current is! PropertyDetailLoaded &&
+        current is! PropertyDetailActionSuccess)
+      return;
     final loaded = current is PropertyDetailLoaded
         ? current
         : (current as PropertyDetailActionSuccess).data;
@@ -288,7 +329,9 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
       final message = role == UserRole.collector
           ? 'collector_action_not_allowed'.tr()
           : 'access_denied_delete'.tr();
-      emit(PropertyDetailActionSuccess(loaded, message: message, isError: true));
+      emit(
+        PropertyDetailActionSuccess(loaded, message: message, isError: true),
+      );
       return;
     }
     emit(PropertyDetailActionInProgress(loaded));
@@ -304,7 +347,12 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
         ownerScope: updated.ownerScope,
         locationAreaId: updated.locationAreaId,
       );
-      emit(PropertyDetailActionSuccess(loaded, message: 'archive'.tr()));
+      emit(
+        PropertyDetailActionSuccess(
+          loaded,
+          message: 'property_archived_success'.tr(),
+        ),
+      );
     } catch (e, st) {
       emit(
         PropertyDetailActionSuccess(
@@ -316,9 +364,69 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
     }
   }
 
-  Future<void> _onDelete(PropertyDeleteRequested event, Emitter<PropertyDetailState> emit) async {
+  Future<void> _onRestore(
+    PropertyRestoreRequested event,
+    Emitter<PropertyDetailState> emit,
+  ) async {
     final current = state;
-    if (current is! PropertyDetailLoaded && current is! PropertyDetailActionSuccess) return;
+    if (current is! PropertyDetailLoaded &&
+        current is! PropertyDetailActionSuccess)
+      return;
+    final loaded = current is PropertyDetailLoaded
+        ? current
+        : (current as PropertyDetailActionSuccess).data;
+    final property = loaded.property;
+    final userId = loaded.userId;
+    final role = loaded.userRole;
+    if (userId == null || role == null) return;
+    if (!loaded.canArchiveOrDelete) {
+      emit(
+        PropertyDetailActionSuccess(
+          loaded,
+          message: 'access_denied_delete'.tr(),
+          isError: true,
+        ),
+      );
+      return;
+    }
+    emit(PropertyDetailActionInProgress(loaded));
+    try {
+      final restored = await _restorePropertyUseCase(
+        property: property,
+        userId: userId,
+        userRole: role,
+      );
+      _mutations.notify(
+        PropertyMutationType.updated,
+        propertyId: restored.id,
+        ownerScope: restored.ownerScope,
+        locationAreaId: restored.locationAreaId,
+      );
+      emit(
+        PropertyDetailActionSuccess(
+          loaded,
+          message: 'property_restored_success'.tr(),
+        ),
+      );
+    } catch (e, st) {
+      emit(
+        PropertyDetailActionSuccess(
+          loaded,
+          message: mapErrorMessage(e, stackTrace: st),
+          isError: true,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onDelete(
+    PropertyDeleteRequested event,
+    Emitter<PropertyDetailState> emit,
+  ) async {
+    final current = state;
+    if (current is! PropertyDetailLoaded &&
+        current is! PropertyDetailActionSuccess)
+      return;
     final loaded = current is PropertyDetailLoaded
         ? current
         : (current as PropertyDetailActionSuccess).data;
@@ -330,12 +438,18 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
       final message = role == UserRole.collector
           ? 'collector_action_not_allowed'.tr()
           : 'access_denied_delete'.tr();
-      emit(PropertyDetailActionSuccess(loaded, message: message, isError: true));
+      emit(
+        PropertyDetailActionSuccess(loaded, message: message, isError: true),
+      );
       return;
     }
     emit(PropertyDetailActionInProgress(loaded));
     try {
-      await _deletePropertyUseCase(property: property, userId: userId, userRole: role);
+      await _deletePropertyUseCase(
+        property: property,
+        userId: userId,
+        userRole: role,
+      );
       _mutations.notify(
         PropertyMutationType.deleted,
         propertyId: property.id,
@@ -359,7 +473,9 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
     Emitter<PropertyDetailState> emit,
   ) async {
     final current = state;
-    if (current is! PropertyDetailLoaded && current is! PropertyDetailActionSuccess) return;
+    if (current is! PropertyDetailLoaded &&
+        current is! PropertyDetailActionSuccess)
+      return;
     final loaded = current is PropertyDetailLoaded
         ? current
         : (current as PropertyDetailActionSuccess).data;
@@ -421,7 +537,9 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
     Emitter<PropertyDetailState> emit,
   ) async {
     final current = state;
-    if (current is! PropertyDetailLoaded && current is! PropertyDetailActionSuccess) return;
+    if (current is! PropertyDetailLoaded &&
+        current is! PropertyDetailActionSuccess)
+      return;
     final loaded = current is PropertyDetailLoaded
         ? current
         : (current as PropertyDetailActionSuccess).data;
@@ -474,7 +592,12 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
       emit(PropertyDetailActionSuccess(loaded));
     } catch (e, st) {
       debugPrint(e.toString());
-      emit(PropertyDetailShareFailure(loaded, message: mapErrorMessage(e, stackTrace: st)));
+      emit(
+        PropertyDetailShareFailure(
+          loaded,
+          message: mapErrorMessage(e, stackTrace: st),
+        ),
+      );
       emit(PropertyDetailActionSuccess(loaded));
     }
   }
@@ -487,9 +610,14 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
     emit(PropertyDetailShareInProgress(loaded, progress));
   }
 
-  void _onImagesLoadMore(PropertyImagesLoadMoreRequested event, Emitter<PropertyDetailState> emit) {
+  void _onImagesLoadMore(
+    PropertyImagesLoadMoreRequested event,
+    Emitter<PropertyDetailState> emit,
+  ) {
     final current = state;
-    if (current is! PropertyDetailLoaded && current is! PropertyDetailActionSuccess) return;
+    if (current is! PropertyDetailLoaded &&
+        current is! PropertyDetailActionSuccess)
+      return;
     final loaded = current is PropertyDetailLoaded
         ? current
         : (current as PropertyDetailActionSuccess).data;
@@ -498,12 +626,17 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
     emit(loaded.copyWith(imagesToShow: next, infoMessage: loaded.infoMessage));
   }
 
-  void _onInfoCleared(PropertyInfoCleared event, Emitter<PropertyDetailState> emit) {
+  void _onInfoCleared(
+    PropertyInfoCleared event,
+    Emitter<PropertyDetailState> emit,
+  ) {
     final current = state;
     if (current is PropertyDetailLoaded) {
       emit(current.copyWith(infoMessage: null));
     } else if (current is PropertyDetailActionSuccess) {
-      emit(PropertyDetailActionSuccess(current.data.copyWith(infoMessage: null)));
+      emit(
+        PropertyDetailActionSuccess(current.data.copyWith(infoMessage: null)),
+      );
     }
   }
 
@@ -519,7 +652,9 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
     Emitter<PropertyDetailState> emit,
   ) async {
     final current = state;
-    if (current is! PropertyDetailLoaded && current is! PropertyDetailActionSuccess) return;
+    if (current is! PropertyDetailLoaded &&
+        current is! PropertyDetailActionSuccess)
+      return;
     final loaded = current is PropertyDetailLoaded
         ? current
         : (current as PropertyDetailActionSuccess).data;
@@ -533,7 +668,9 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
               ? 'phone_access_accepted'.tr()
               : 'location_access_accepted'.tr()
         : null;
-    final withMessage = message != null ? updated.copyWith(infoMessage: message) : updated;
+    final withMessage = message != null
+        ? updated.copyWith(infoMessage: message)
+        : updated;
     emit(PropertyDetailActionSuccess(withMessage, message: message));
   }
 
@@ -544,8 +681,12 @@ class PropertyDetailBloc extends Bloc<PropertyDetailEvent, PropertyDetailState> 
   ) {
     final isAccepted = request?.status == AccessRequestStatus.accepted;
     return loaded.copyWith(
-      imagesAccessRequest: type == AccessRequestType.images ? request : loaded.imagesAccessRequest,
-      phoneAccessRequest: type == AccessRequestType.phone ? request : loaded.phoneAccessRequest,
+      imagesAccessRequest: type == AccessRequestType.images
+          ? request
+          : loaded.imagesAccessRequest,
+      phoneAccessRequest: type == AccessRequestType.phone
+          ? request
+          : loaded.phoneAccessRequest,
       locationAccessRequest: type == AccessRequestType.location
           ? request
           : loaded.locationAccessRequest,

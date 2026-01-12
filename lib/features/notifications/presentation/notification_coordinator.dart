@@ -39,6 +39,8 @@ class NotificationCoordinator {
   UserRole? _currentRole;
   String? _currentUserId;
   AppNotification? _pendingTappedNotification;
+  String? _lastSnackbarNotificationId;
+  DateTime? _lastSnackbarAt;
 
   Future<void> configure({required BuildContext context, required GoRouter router}) async {
     if (_configured) return;
@@ -94,7 +96,7 @@ class NotificationCoordinator {
         notification.type == AppNotificationType.accessRequest) {
       final canOpen = await _collectorCanOpenAccessRequest(notification);
       if (!canOpen) {
-        AppSnackbar.show(_context, 'access_denied'.tr(), isError: true);
+        AppSnackbar.show(_context, 'access_denied'.tr(), type: AppSnackbarType.error);
         return;
       }
     }
@@ -114,6 +116,7 @@ class NotificationCoordinator {
       await _showAccessRequestDialog(notification);
       return;
     }
+    if (!_shouldShowForegroundSnackbar(notification)) return;
     final message = notification.body.isNotEmpty ? notification.body : notification.title;
     AppSnackbar.show(context, message);
   }
@@ -141,6 +144,18 @@ class NotificationCoordinator {
       _pendingTappedNotification = null;
     }
     return shouldShow;
+  }
+
+  bool _shouldShowForegroundSnackbar(AppNotification notification) {
+    final now = DateTime.now();
+    if (_lastSnackbarNotificationId == notification.id &&
+        _lastSnackbarAt != null &&
+        now.difference(_lastSnackbarAt!) < const Duration(seconds: 5)) {
+      return false;
+    }
+    _lastSnackbarNotificationId = notification.id;
+    _lastSnackbarAt = now;
+    return true;
   }
 
   Future<bool> _collectorCanOpenAccessRequest(AppNotification notification) async {
