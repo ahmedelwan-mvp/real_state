@@ -6,11 +6,11 @@ import 'package:real_state/core/constants/ui_constants.dart';
 import 'package:real_state/core/constants/user_role.dart';
 import 'package:real_state/core/handle_errors/error_mapper.dart';
 import 'package:real_state/features/auth/domain/repositories/auth_repository_domain.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
 import 'package:real_state/features/location/domain/usecases/get_location_areas_usecase.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
 import 'package:real_state/features/models/entities/property.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart';
 import 'package:real_state/features/properties/domain/property_owner_scope.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_bloc.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_state.dart';
@@ -54,7 +54,9 @@ class CategoriesCubit extends Cubit<CategoriesState> {
     _authSub = _auth.userChanges.listen((u) {
       _isCollector = u?.role == UserRole.collector;
     });
-    _auth.userChanges.first.then((u) => _isCollector = u?.role == UserRole.collector);
+    _auth.userChanges.first.then(
+      (u) => _isCollector = u?.role == UserRole.collector,
+    );
   }
 
   /// Load location areas for filter dropdown
@@ -63,7 +65,8 @@ class CategoriesCubit extends Cubit<CategoriesState> {
   }
 
   Future<void> ensureLocationsLoaded({bool force = false}) async {
-    if (_locationsLoaded && _coreState().locationAreas.isNotEmpty && !force) return;
+    if (_locationsLoaded && _coreState().locationAreas.isNotEmpty && !force)
+      return;
     if (_locationsLoadCompleter != null) return _locationsLoadCompleter!.future;
 
     _locationsLoadCompleter = Completer<void>();
@@ -209,7 +212,9 @@ class CategoriesCubit extends Cubit<CategoriesState> {
     }
   }
 
-  Future<Map<String, LocationArea>> _fetchAreaNamesFor(List<Property> props) async {
+  Future<Map<String, LocationArea>> _fetchAreaNamesFor(
+    List<Property> props,
+  ) async {
     final ids = props
         .where((p) => p.locationAreaId != null)
         .map((p) => p.locationAreaId!)
@@ -242,10 +247,17 @@ class CategoriesCubit extends Cubit<CategoriesState> {
     required Map<String, LocationArea> cachedAreas,
   }) async {
     emit(
-      CategoriesLoadInProgress(filter: filter, locationAreas: locations, areaNames: cachedAreas),
+      CategoriesLoadInProgress(
+        filter: filter,
+        locationAreas: locations,
+        areaNames: cachedAreas,
+      ),
     );
     try {
-      final page = await _fetchPageForRole(limit: UiConstants.propertiesPageLimit, filter: filter);
+      final page = await _fetchPageForRole(
+        limit: UiConstants.propertiesPageLimit,
+        filter: filter,
+      );
       final filtered = _filterForRole(page.items);
       final areaNames = await _fetchAreaNamesFor(filtered);
       emit(
@@ -285,7 +297,10 @@ class CategoriesCubit extends Cubit<CategoriesState> {
     }
   }
 
-  CategoriesState _stateWithLocations(List<LocationArea> areas, Map<String, LocationArea> names) {
+  CategoriesState _stateWithLocations(
+    List<LocationArea> areas,
+    Map<String, LocationArea> names,
+  ) {
     final current = _coreState();
     if (state is CategoriesLoadSuccess) {
       final listState = state as CategoriesLoadSuccess;
@@ -364,7 +379,9 @@ class CategoriesCubit extends Cubit<CategoriesState> {
 
   List<Property> _filterForRole(List<Property> items) {
     if (!_isCollector) return items;
-    return items.where((p) => p.ownerScope == PropertyOwnerScope.company).toList();
+    return items
+        .where((p) => p.ownerScope == PropertyOwnerScope.company)
+        .toList();
   }
 
   Future<PageResult<Property>> _fetchPageForRole({
@@ -373,8 +390,16 @@ class CategoriesCubit extends Cubit<CategoriesState> {
     PropertyFilter? filter,
   }) {
     if (_isCollector) {
-      return _repo.fetchCompanyPage(startAfter: startAfter, limit: limit, filter: filter);
+      return _repo.fetchCompanyPage(
+        startAfter: startAfter,
+        limit: limit,
+        filter: filter,
+      );
     }
-    return _repo.fetchPage(startAfter: startAfter, limit: limit, filter: filter);
+    return _repo.fetchPage(
+      startAfter: startAfter,
+      limit: limit,
+      filter: filter,
+    );
   }
 }

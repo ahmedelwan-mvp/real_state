@@ -49,7 +49,9 @@ class LocationPickerFormField extends StatelessWidget {
               children: [
                 Text(
                   'locations_empty_title'.tr(),
-                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -102,7 +104,9 @@ class LocationPickerFormField extends StatelessWidget {
         const SizedBox(width: 12),
         Container(
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3),
+            color: Theme.of(
+              context,
+            ).colorScheme.primaryContainer.withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(12),
           ),
           child: IconButton(

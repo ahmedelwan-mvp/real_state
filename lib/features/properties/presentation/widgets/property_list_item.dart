@@ -31,7 +31,8 @@ class PropertyListItem extends StatelessWidget {
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOut,
       tween: Tween(begin: 0.95, end: 1.0),
-      builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
+      builder: (context, scale, child) =>
+          Transform.scale(scale: scale, child: child),
       child: PropertyCard(
         property: property,
         areaName: areaName,

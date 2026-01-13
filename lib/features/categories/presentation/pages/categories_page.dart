@@ -72,10 +72,10 @@ class _CategoriesPageState extends State<CategoriesPage>
       appBar: _selectionMode
           ? SelectionAppBar(
               selectedCount: _selected.length,
-              policy: const PropertySelectionPolicy(actions: [PropertyBulkAction.share]),
-              actionCallbacks: {
-                PropertyBulkAction.share: _shareSelected,
-              },
+              policy: const PropertySelectionPolicy(
+                actions: [PropertyBulkAction.share],
+              ),
+              actionCallbacks: {PropertyBulkAction.share: _shareSelected},
               onClearSelection: _clearSelection,
             )
           : CustomAppBar(title: 'categories'.tr()),
@@ -162,17 +162,20 @@ class _CategoriesPageState extends State<CategoriesPage>
                 final localeCode = context.locale.toString();
                 return CategoryPropertyCard(
                   property: property,
-                    areaName: core.areaNames[property.locationAreaId]
-                            ?.localizedName(localeCode: localeCode) ??
-                        'placeholder_dash'.tr(),
+                  areaName:
+                      core.areaNames[property.locationAreaId]?.localizedName(
+                        localeCode: localeCode,
+                      ) ??
+                      'placeholder_dash'.tr(),
                   selectionMode: _selectionMode,
                   selected: _selected.contains(property.id),
                   onSelectToggle: () => _toggleSelection(property.id),
                   onLongPressSelect: () => _toggleSelection(property.id),
                   onTap: _selectionMode
                       ? () => _toggleSelection(property.id)
-                      : () => GoRouter.of(context)
-                          .push('/property/${property.id}'),
+                      : () => GoRouter.of(
+                          context,
+                        ).push('/property/${property.id}'),
                 );
               },
             );

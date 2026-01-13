@@ -25,26 +25,40 @@ class BrokerAreasBloc extends Bloc<BrokerAreasEvent, BrokerAreasState> {
   BrokerAreasBloc(this._getAreas, this._auth, PropertyMutationsBloc mutations)
     : super(const BrokerAreasInitial()) {
     on<BrokerAreasRequested>(_onRequested);
-    _auth.userChanges.first.then((user) => _isCollector = user?.role == UserRole.collector);
+    _auth.userChanges.first.then(
+      (user) => _isCollector = user?.role == UserRole.collector,
+    );
     _authSub = _auth.userChanges.listen((user) {
       _isCollector = user?.role == UserRole.collector;
     });
     _mutationSub = mutations.mutationStream.listen((mutation) {
-      if (mutation.ownerScope == PropertyOwnerScope.broker && _activeBrokerId != null) {
+      if (mutation.ownerScope == PropertyOwnerScope.broker &&
+          _activeBrokerId != null) {
         add(BrokerAreasRequested(_activeBrokerId!));
       }
     });
   }
 
-  Future<void> _onRequested(BrokerAreasRequested event, Emitter<BrokerAreasState> emit) async {
+  Future<void> _onRequested(
+    BrokerAreasRequested event,
+    Emitter<BrokerAreasState> emit,
+  ) async {
     _activeBrokerId = event.brokerId;
     if (_isCollector) {
-      emit(BrokerAreasFailure(brokerId: event.brokerId, message: 'access_denied'.tr()));
+      emit(
+        BrokerAreasFailure(
+          brokerId: event.brokerId,
+          message: 'access_denied'.tr(),
+        ),
+      );
       return;
     }
     emit(BrokerAreasLoadInProgress(event.brokerId));
     try {
-      final areas = await _getAreas(event.brokerId, cachedAreaNames: _areaNameCache);
+      final areas = await _getAreas(
+        event.brokerId,
+        cachedAreaNames: _areaNameCache,
+      );
       for (final area in areas) {
         _areaNameCache[area.id] = area.name;
       }

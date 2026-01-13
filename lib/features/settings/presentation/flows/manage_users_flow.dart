@@ -35,14 +35,15 @@ class ManageUsersFlow {
   }) async {
     await showDialog<bool>(
       context: context,
-      builder: (_) => EditManagedUserDialog(
-        user: user,
-        canAssignOwner: canAssignOwner,
-      ),
+      builder: (_) =>
+          EditManagedUserDialog(user: user, canAssignOwner: canAssignOwner),
     );
   }
 
-  Future<void> confirmAndDeleteUser(BuildContext context, ManagedUser user) async {
+  Future<void> confirmAndDeleteUser(
+    BuildContext context,
+    ManagedUser user,
+  ) async {
     final result = await AppConfirmDialog.show(
       context,
       titleKey: 'delete_user',

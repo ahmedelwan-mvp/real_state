@@ -9,7 +9,7 @@ import 'package:real_state/features/location/presentation/widgets/location_picke
 import 'package:real_state/features/models/entities/location_area.dart';
 import 'package:real_state/features/models/entities/property.dart';
 
-import '../models/property_editor_models.dart';
+import 'package:real_state/features/properties/models/property_editor_models.dart';
 import 'property_images_editor.dart';
 
 class PropertyEditorForm extends StatelessWidget {
@@ -88,7 +88,9 @@ class PropertyEditorForm extends StatelessWidget {
                     AppTextField(
                       label: 'title_label'.tr(),
                       controller: titleCtrl,
-                      validator: (v) => Validators.isNotEmpty(v) ? null : 'title_required'.tr(),
+                      validator: (v) => Validators.isNotEmpty(v)
+                          ? null
+                          : 'title_required'.tr(),
                       textInputAction: TextInputAction.next,
                     ),
                     const SizedBox(height: 12),
@@ -96,27 +98,37 @@ class PropertyEditorForm extends StatelessWidget {
                       label: 'description_label'.tr(),
                       controller: descCtrl,
                       maxLines: 3,
-                      validator: (v) =>
-                          Validators.isNotEmpty(v) ? null : 'description_required'.tr(),
+                      validator: (v) => Validators.isNotEmpty(v)
+                          ? null
+                          : 'description_required'.tr(),
                       textInputAction: TextInputAction.newline,
                     ),
                     const SizedBox(height: 12),
                     AppTextField(
                       label: 'price_label'.tr(),
                       controller: priceCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       validator: (v) {
-                        if (!Validators.isNotEmpty(v)) return 'price_required'.tr();
-                        return Validators.isValidPrice(v) ? null : 'price_invalid'.tr();
+                        if (!Validators.isNotEmpty(v))
+                          return 'price_required'.tr();
+                        return Validators.isValidPrice(v)
+                            ? null
+                            : 'price_invalid'.tr();
                       },
                       prefixIcon: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
                         child: Text(
                           AED,
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            fontFamily: 'AED',
-                          ),
+                          style: Theme.of(context).textTheme.labelMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w700,
+                                fontFamily: 'AED',
+                              ),
                         ),
                       ),
                       textInputAction: TextInputAction.next,
@@ -129,7 +141,9 @@ class PropertyEditorForm extends StatelessWidget {
                       textInputAction: TextInputAction.next,
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return null;
-                        return Validators.isValidUrl(v) ? null : 'location_url_invalid'.tr();
+                        return Validators.isValidUrl(v)
+                            ? null
+                            : 'location_url_invalid'.tr();
                       },
                     ),
                     const SizedBox(height: 12),
@@ -139,15 +153,21 @@ class PropertyEditorForm extends StatelessWidget {
                           .map(
                             (p) => DropdownMenuItem(
                               value: p,
-                              child: Text('purpose.${p.name}'.tr().toUpperCase()),
+                              child: Text(
+                                'purpose.${p.name}'.tr().toUpperCase(),
+                              ),
                             ),
                           )
                           .toList(),
-                      validator: (p) => Validators.isSelected(p) ? null : 'purpose_required'.tr(),
+                      validator: (p) => Validators.isSelected(p)
+                          ? null
+                          : 'purpose_required'.tr(),
                       onChanged: (p) {
                         if (p != null) onPurposeChanged(p);
                       },
-                      decoration: InputDecoration(labelText: 'purpose_label'.tr()),
+                      decoration: InputDecoration(
+                        labelText: 'purpose_label'.tr(),
+                      ),
                     ),
                     const SizedBox(height: 12),
                     LocationPickerFormField(
@@ -155,7 +175,9 @@ class PropertyEditorForm extends StatelessWidget {
                       locations: locations,
                       onChanged: onLocationChanged,
                       onAddPressed: onAddLocation,
-                      validator: (v) => Validators.isSelected(v) ? null : 'location_required'.tr(),
+                      validator: (v) => Validators.isSelected(v)
+                          ? null
+                          : 'location_required'.tr(),
                     ),
                     const SizedBox(height: 12),
                     _buildCountsRow(),
@@ -173,7 +195,9 @@ class PropertyEditorForm extends StatelessWidget {
                       keyboardType: TextInputType.phone,
                       validator: (v) {
                         if (v == null || v.trim().isEmpty) return null;
-                        return Validators.isValidPhone(v) ? null : 'owner_phone_invalid'.tr();
+                        return Validators.isValidPhone(v)
+                            ? null
+                            : 'owner_phone_invalid'.tr();
                       },
                       textInputAction: TextInputAction.done,
                     ),
@@ -269,7 +293,12 @@ class _SectionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+            Text(
+              title,
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 12),
             child,
           ],

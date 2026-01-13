@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:real_state/core/auth/auth_repository.dart';
 import 'package:real_state/core/components/base_gradient_page.dart';
-import 'package:real_state/features/splash/cubit/splash_cubit.dart';
+import 'package:real_state/features/splash/presentation/cubit/splash_cubit.dart';
 import 'package:real_state/features/splash/presentation/widgets/splash_logo.dart';
 
 class SplashPage extends StatefulWidget {

@@ -49,10 +49,8 @@ Future<void> shareMultiplePropertyPdfs({
     final files = <XFile>[];
     for (var i = 0; i < properties.length; i++) {
       final property = properties[i];
-      final includeImages = canViewPropertyImages(
-            context: context,
-            property: property,
-          ) &&
+      final includeImages =
+          canViewPropertyImages(context: context, property: property) &&
           !property.isImagesHidden &&
           property.imageUrls.isNotEmpty;
       final bytes = await service.buildPdfBytes(
@@ -60,7 +58,9 @@ Future<void> shareMultiplePropertyPdfs({
         localeCode: localeCode,
         includeImages: includeImages,
         onProgress: (progress) {
-          overlayController.update(_batchProgress(progress, i, properties.length));
+          overlayController.update(
+            _batchProgress(progress, i, properties.length),
+          );
         },
       );
       files.add(
@@ -74,24 +74,28 @@ Future<void> shareMultiplePropertyPdfs({
     if (files.isEmpty) {
       throw const LocalizedException('share_pdf_not_allowed');
     }
-    overlayController.update(_batchProgress(
-      PropertyShareProgress(
-        stage: PropertyShareStage.uploadingSharing,
-        fraction: PropertyShareStage.uploadingSharing.defaultFraction(),
+    overlayController.update(
+      _batchProgress(
+        PropertyShareProgress(
+          stage: PropertyShareStage.uploadingSharing,
+          fraction: PropertyShareStage.uploadingSharing.defaultFraction(),
+        ),
+        properties.length - 1,
+        properties.length,
       ),
-      properties.length - 1,
-      properties.length,
-    ));
+    );
     // ignore: deprecated_member_use
     await Share.shareXFiles(files, text: 'share_details_pdf'.tr());
-    overlayController.update(_batchProgress(
-      PropertyShareProgress(
-        stage: PropertyShareStage.finalizing,
-        fraction: PropertyShareStage.finalizing.defaultFraction(),
+    overlayController.update(
+      _batchProgress(
+        PropertyShareProgress(
+          stage: PropertyShareStage.finalizing,
+          fraction: PropertyShareStage.finalizing.defaultFraction(),
+        ),
+        properties.length - 1,
+        properties.length,
       ),
-      properties.length - 1,
-      properties.length,
-    ));
+    );
   } on Object catch (e, st) {
     AppSnackbar.show(
       context,
@@ -111,7 +115,10 @@ PropertyShareProgress _batchProgress(
   if (totalProperties <= 0) return progress;
   final clampedIndex = propertyIndex.clamp(0, totalProperties - 1);
   final propertyBase = clampedIndex / totalProperties;
-  final fraction = (propertyBase + progress.fraction / totalProperties).clamp(0.0, 1.0);
+  final fraction = (propertyBase + progress.fraction / totalProperties).clamp(
+    0.0,
+    1.0,
+  );
   return PropertyShareProgress(
     stage: progress.stage,
     fraction: fraction,

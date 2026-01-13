@@ -14,7 +14,11 @@ class LocationAreaFormResult {
   final String nameEn;
   final XFile? imageFile;
 
-  const LocationAreaFormResult({required this.nameAr, required this.nameEn, this.imageFile});
+  const LocationAreaFormResult({
+    required this.nameAr,
+    required this.nameEn,
+    this.imageFile,
+  });
 }
 
 class LocationAreaFormDialog extends StatefulWidget {
@@ -22,7 +26,10 @@ class LocationAreaFormDialog extends StatefulWidget {
 
   const LocationAreaFormDialog({super.key, this.initial});
 
-  static Future<LocationAreaFormResult?> show(BuildContext context, {LocationArea? initial}) {
+  static Future<LocationAreaFormResult?> show(
+    BuildContext context, {
+    LocationArea? initial,
+  }) {
     return showDialog<LocationAreaFormResult>(
       context: context,
       builder: (context) => LocationAreaFormDialog(initial: initial),
@@ -58,7 +65,9 @@ class _LocationAreaFormDialogState extends State<LocationAreaFormDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return AlertDialog(
-      title: Text(widget.initial == null ? 'add_location'.tr() : 'edit_location'.tr()),
+      title: Text(
+        widget.initial == null ? 'add_location'.tr() : 'edit_location'.tr(),
+      ),
       content: SingleChildScrollView(
         child: Form(
           key: _formKey,
@@ -91,20 +100,25 @@ class _LocationAreaFormDialogState extends State<LocationAreaFormDialog> {
               AppTextField(
                 label: 'name_ar_label'.tr(),
                 controller: _nameArCtrl,
-                validator: (v) => Validators.isNotEmpty(v) ? null : 'name_ar_required'.tr(),
+                validator: (v) =>
+                    Validators.isNotEmpty(v) ? null : 'name_ar_required'.tr(),
               ),
               const SizedBox(height: 12),
               AppTextField(
                 label: 'name_en_label'.tr(),
                 controller: _nameEnCtrl,
-                validator: (v) => Validators.isNotEmpty(v) ? null : 'name_en_required'.tr(),
+                validator: (v) =>
+                    Validators.isNotEmpty(v) ? null : 'name_en_required'.tr(),
               ),
             ],
           ),
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.of(context).pop(), child: Text('cancel'.tr())),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: Text('cancel'.tr()),
+        ),
         PrimaryButton(
           label: widget.initial == null ? 'add'.tr() : 'save'.tr(),
           expand: false,
@@ -116,7 +130,8 @@ class _LocationAreaFormDialogState extends State<LocationAreaFormDialog> {
 
   void _submit() {
     final valid = _formKey.currentState?.validate() ?? false;
-    final hasImageNow = _imageFile != null || (widget.initial?.imageUrl.isNotEmpty ?? false);
+    final hasImageNow =
+        _imageFile != null || (widget.initial?.imageUrl.isNotEmpty ?? false);
     setState(() => _showImageError = !hasImageNow);
     if (!valid || !hasImageNow) return;
     Navigator.of(context).pop(
@@ -161,7 +176,9 @@ class _LocationAreaImagePicker extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(16),
       onTap: () async {
-        final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
+        final picked = await ImagePicker().pickImage(
+          source: ImageSource.gallery,
+        );
         if (picked != null) {
           onPick(picked);
         }
@@ -176,13 +193,19 @@ class _LocationAreaImagePicker extends StatelessWidget {
         child: Stack(
           children: [
             Positioned.fill(
-              child: ClipRRect(borderRadius: BorderRadius.circular(16), child: preview),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: preview,
+              ),
             ),
             Positioned(
               bottom: 10,
               right: 10,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: theme.colorScheme.surface.withValues(alpha: 0.9),
                   borderRadius: BorderRadius.circular(12),
@@ -196,7 +219,9 @@ class _LocationAreaImagePicker extends StatelessWidget {
                       imageFile != null || existingUrl.isNotEmpty
                           ? 'replace_image'.tr()
                           : 'pick_image'.tr(),
-                      style: theme.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),

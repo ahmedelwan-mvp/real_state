@@ -24,12 +24,20 @@ class AppTheme {
         ),
       ),
       textTheme: base.textTheme.copyWith(
-        titleLarge: base.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-        titleMedium: base.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
-        titleSmall: base.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        titleLarge: base.textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+        titleMedium: base.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+        titleSmall: base.textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.w600,
+        ),
         bodyLarge: base.textTheme.bodyLarge?.copyWith(height: 1.35),
         bodyMedium: base.textTheme.bodyMedium?.copyWith(height: 1.35),
-        labelLarge: base.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w700),
+        labelLarge: base.textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
       ),
       cardTheme: CardThemeData(
         elevation: 1,
@@ -53,13 +61,20 @@ class AppTheme {
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        labelStyle: base.textTheme.bodyMedium?.copyWith(color: Colors.grey[700]),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
+        labelStyle: base.textTheme.bodyMedium?.copyWith(
+          color: Colors.grey[700],
+        ),
         hintStyle: base.textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(14),
+          ),
         ),
       ),
       pageTransitionsTheme: const PageTransitionsTheme(
@@ -79,7 +94,10 @@ class AppTheme {
       brightness: Brightness.dark,
       fontFamily: 'Cairo',
       primaryColor: AppColors.primary,
-      colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary, brightness: Brightness.dark),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: AppColors.primary,
+        brightness: Brightness.dark,
+      ),
     );
     return base.copyWith(
       appBarTheme: base.appBarTheme.copyWith(
@@ -101,7 +119,10 @@ class AppTheme {
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {

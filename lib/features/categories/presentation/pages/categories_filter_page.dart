@@ -11,7 +11,8 @@ import 'package:real_state/core/utils/price_formatter.dart';
 import 'package:real_state/core/validation/validators.dart';
 import 'package:real_state/core/widgets/app_dropdown.dart';
 import 'package:real_state/core/widgets/app_select_item.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
+import 'package:real_state/features/categories/domain/usecases/apply_property_filter_usecase.dart';
 import 'package:real_state/features/categories/presentation/cubit/categories_cubit.dart';
 import 'package:real_state/features/categories/presentation/cubit/categories_state.dart';
 
@@ -24,17 +25,19 @@ class CategoriesFilterPage extends StatefulWidget {
 
 class _CategoriesFilterPageState extends State<CategoriesFilterPage> {
   final _formKey = GlobalKey<FormState>();
+  late final ApplyPropertyFilterUseCase _applyFilterUseCase;
   late String? _selectedLocationId;
   late TextEditingController _minPriceCtrl;
   late TextEditingController _maxPriceCtrl;
   late int? _selectedRooms;
   late bool _hasPool;
   bool _formattingPrice = false;
-  String? _priceError;
+  String? _validationErrorKey;
 
   @override
   void initState() {
     super.initState();
+    _applyFilterUseCase = context.read<ApplyPropertyFilterUseCase>();
     final cubit = context.read<CategoriesCubit>();
     cubit.ensureLocationsLoaded();
     final core = cubit.state is CategoriesCoreState
@@ -56,7 +59,6 @@ class _CategoriesFilterPageState extends State<CategoriesFilterPage> {
     _hasPool = f.hasPool ?? false;
     _minPriceCtrl.addListener(() => _formatPrice(_minPriceCtrl));
     _maxPriceCtrl.addListener(() => _formatPrice(_maxPriceCtrl));
-    _validatePriceRange();
   }
 
   @override
@@ -67,23 +69,20 @@ class _CategoriesFilterPageState extends State<CategoriesFilterPage> {
   }
 
   void _onApply() {
-    final valid = _formKey.currentState?.validate() ?? false;
-    if (!valid) return;
-    final minP = Validators.parsePrice(_minPriceCtrl.text);
-    final maxP = Validators.parsePrice(_maxPriceCtrl.text);
-    final newFilter = PropertyFilter(
-      locationAreaId: _selectedLocationId,
-      minPrice: minP,
-      maxPrice: maxP,
-      rooms: _selectedRooms,
-      hasPool: _hasPool ? true : null,
-    );
+    final candidate = _buildCandidateFilter();
+    final validation = _applyFilterUseCase(candidate);
+    setState(() {
+      _validationErrorKey = validation.error?.messageKey;
+    });
+    _formKey.currentState?.validate();
+    if (!validation.isSuccess) return;
     final cubit = context.read<CategoriesCubit>();
-    cubit.applyFilter(newFilter);
+    cubit.applyFilter(validation.filter!);
     context.push('/categories', extra: cubit);
   }
 
   void _onClear() {
+    _clearValidationError();
     context.read<CategoriesCubit>().clearFilters();
     context.pop();
   }
@@ -113,19 +112,28 @@ class _CategoriesFilterPageState extends State<CategoriesFilterPage> {
         );
       }
     }
-    _validatePriceRange();
+    _clearValidationError();
     _formattingPrice = false;
     setState(() {});
   }
 
-  void _validatePriceRange() {
+  PropertyFilter _buildCandidateFilter() {
     final minP = Validators.parsePrice(_minPriceCtrl.text);
     final maxP = Validators.parsePrice(_maxPriceCtrl.text);
-    if (minP != null && maxP != null && minP > maxP) {
-      _priceError = 'price_error_range'.tr();
-    } else {
-      _priceError = null;
-    }
+    return PropertyFilter(
+      locationAreaId: _selectedLocationId,
+      minPrice: minP,
+      maxPrice: maxP,
+      rooms: _selectedRooms,
+      hasPool: _hasPool ? true : null,
+    );
+  }
+
+  void _clearValidationError() {
+    if (_validationErrorKey == null) return;
+    setState(() {
+      _validationErrorKey = null;
+    });
   }
 
   @override
@@ -145,7 +153,9 @@ class _CategoriesFilterPageState extends State<CategoriesFilterPage> {
           builder: (context, state) {
             final core = state as CategoriesCoreState;
             final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-            final isApplyEnabled = (_priceError == null);
+            final candidateFilter = _buildCandidateFilter();
+            final validation = _applyFilterUseCase(candidateFilter);
+            final isApplyEnabled = validation.isSuccess;
             final selectedExists = core.locationAreas.any(
               (l) => l.id == _selectedLocationId,
             );
@@ -212,8 +222,10 @@ class _CategoriesFilterPageState extends State<CategoriesFilterPage> {
                                 ),
                               ),
                             ],
-                            onChanged: (val) =>
-                                setState(() => _selectedLocationId = val),
+                            onChanged: (val) {
+                              setState(() => _selectedLocationId = val);
+                              _clearValidationError();
+                            },
                           ),
                         ],
                         const SizedBox(height: 16),
@@ -245,7 +257,7 @@ class _CategoriesFilterPageState extends State<CategoriesFilterPage> {
                                         ),
                                   ),
                                 ),
-                                validator: (_) => _priceError,
+                                validator: (_) => _validationErrorKey?.tr(),
                                 textInputAction: TextInputAction.next,
                                 onFieldSubmitted: (_) =>
                                     FocusScope.of(context).nextFocus(),
@@ -276,7 +288,7 @@ class _CategoriesFilterPageState extends State<CategoriesFilterPage> {
                                         ),
                                   ),
                                 ),
-                                validator: (_) => _priceError,
+                                validator: (_) => _validationErrorKey?.tr(),
                                 textInputAction: TextInputAction.next,
                                 onFieldSubmitted: (_) =>
                                     FocusScope.of(context).nextFocus(),
@@ -284,11 +296,11 @@ class _CategoriesFilterPageState extends State<CategoriesFilterPage> {
                             ),
                           ],
                         ),
-                        if (_priceError != null)
+                        if (_validationErrorKey != null)
                           Padding(
                             padding: const EdgeInsets.only(top: 8.0),
                             child: Text(
-                              _priceError!,
+                              _validationErrorKey!.tr(),
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
                                     color: Theme.of(context).colorScheme.error,
@@ -326,8 +338,10 @@ class _CategoriesFilterPageState extends State<CategoriesFilterPage> {
                               label: 'room_option_5'.tr(),
                             ),
                           ],
-                          onChanged: (val) =>
-                              setState(() => _selectedRooms = val),
+                          onChanged: (val) {
+                            setState(() => _selectedRooms = val);
+                            _clearValidationError();
+                          },
                         ),
                         const SizedBox(height: 16),
                         _SectionHeader(label: 'has_pool'.tr()),
@@ -354,8 +368,10 @@ class _CategoriesFilterPageState extends State<CategoriesFilterPage> {
                               ),
                               Switch(
                                 value: _hasPool,
-                                onChanged: (val) =>
-                                    setState(() => _hasPool = val),
+                                onChanged: (val) {
+                                  setState(() => _hasPool = val);
+                                  _clearValidationError();
+                                },
                               ),
                             ],
                           ),

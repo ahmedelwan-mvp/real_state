@@ -65,7 +65,9 @@ class _ArchivePropertiesPageState extends State<ArchivePropertiesPage> {
 
   Future<void> _shareSelected() async {
     final selectedIds = _selectionController.selectedIds.value;
-    final props = _currentItems.where((p) => selectedIds.contains(p.id)).toList();
+    final props = _currentItems
+        .where((p) => selectedIds.contains(p.id))
+        .toList();
     if (props.isEmpty) return;
     await shareMultiplePropertyPdfs(context: context, properties: props);
     _clearSelection();
@@ -78,10 +80,10 @@ class _ArchivePropertiesPageState extends State<ArchivePropertiesPage> {
       appBar: _selectionMode
           ? SelectionAppBar(
               selectedCount: _selectionController.selectedCount,
-              policy: const PropertySelectionPolicy(actions: [PropertyBulkAction.share]),
-              actionCallbacks: {
-                PropertyBulkAction.share: _shareSelected,
-              },
+              policy: const PropertySelectionPolicy(
+                actions: [PropertyBulkAction.share],
+              ),
+              actionCallbacks: {PropertyBulkAction.share: _shareSelected},
               onClearSelection: _clearSelection,
             )
           : CustomAppBar(title: 'archive'),
@@ -90,7 +92,9 @@ class _ArchivePropertiesPageState extends State<ArchivePropertiesPage> {
           listener: (context, state) {
             if (state is ArchivePropertiesLoaded) {
               _refreshController.refreshCompleted();
-              state.hasMore ? _refreshController.loadComplete() : _refreshController.loadNoData();
+              state.hasMore
+                  ? _refreshController.loadComplete()
+                  : _refreshController.loadNoData();
             } else if (state is ArchivePropertiesFailure) {
               _refreshController.refreshFailed();
               _refreshController.loadFailed();
@@ -104,7 +108,8 @@ class _ArchivePropertiesPageState extends State<ArchivePropertiesPage> {
           builder: (context, state) {
             final loaded = _loadedFrom(state);
             final isInitialLoading =
-                state is ArchivePropertiesInitial || state is ArchivePropertiesLoading;
+                state is ArchivePropertiesInitial ||
+                state is ArchivePropertiesLoading;
 
             if (state is ArchivePropertiesFailure) {
               return AppErrorView(
@@ -115,7 +120,9 @@ class _ArchivePropertiesPageState extends State<ArchivePropertiesPage> {
               );
             }
 
-            final items = isInitialLoading ? placeholderProperties() : (loaded?.items ?? const []);
+            final items = isInitialLoading
+                ? placeholderProperties()
+                : (loaded?.items ?? const []);
             final areaNames = loaded?.areaNames ?? const {};
 
             if (!isInitialLoading) {
@@ -126,7 +133,9 @@ class _ArchivePropertiesPageState extends State<ArchivePropertiesPage> {
               return EmptyStateWidget(
                 description: 'no_properties_archive'.tr(),
                 action: () {
-                  context.read<ArchivePropertiesBloc>().add(const ArchivePropertiesStarted());
+                  context.read<ArchivePropertiesBloc>().add(
+                    const ArchivePropertiesStarted(),
+                  );
                 },
               );
             }
@@ -137,7 +146,9 @@ class _ArchivePropertiesPageState extends State<ArchivePropertiesPage> {
               hasMore: loaded?.hasMore ?? false,
               onRefresh: () {
                 _clearSelection();
-                context.read<ArchivePropertiesBloc>().add(const ArchivePropertiesRefreshed());
+                context.read<ArchivePropertiesBloc>().add(
+                  const ArchivePropertiesRefreshed(),
+                );
               },
               onLoadMore: () => context.read<ArchivePropertiesBloc>().add(
                 const ArchivePropertiesLoadMoreRequested(),
@@ -146,12 +157,17 @@ class _ArchivePropertiesPageState extends State<ArchivePropertiesPage> {
               itemBuilder: (context, index) {
                 final property = items[index];
                 final areaName =
-                    areaNames[property.locationAreaId]?.localizedName(localeCode: localeCode) ??
+                    areaNames[property.locationAreaId]?.localizedName(
+                      localeCode: localeCode,
+                    ) ??
                     'placeholder_dash'.tr();
                 return _ArchivedPropertyCard(
                   property: property,
                   areaName: areaName,
-                  onTap: () => context.push('/property/${property.id}', extra: {'readOnly': true}),
+                  onTap: () => context.push(
+                    '/property/${property.id}',
+                    extra: {'readOnly': true},
+                  ),
                   selectionMode: _selectionMode,
                   selected: _selectionController.isSelected(property.id),
                   onSelectToggle: () => _toggleSelection(property.id),
@@ -196,7 +212,9 @@ class _ArchivedPropertyCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final badgeColor = Theme.of(context).colorScheme.surfaceContainerHighest;
-    final textStyle = Theme.of(context).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700);
+    final textStyle = Theme.of(
+      context,
+    ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700);
     return Stack(
       children: [
         PropertyCard(
@@ -213,7 +231,10 @@ class _ArchivedPropertyCard extends StatelessWidget {
           left: 12,
           child: Container(
             padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-            decoration: BoxDecoration(color: badgeColor, borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(
+              color: badgeColor,
+              borderRadius: BorderRadius.circular(10),
+            ),
             child: Text('archive'.tr(), style: textStyle),
           ),
         ),

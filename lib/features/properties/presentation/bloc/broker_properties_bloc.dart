@@ -6,12 +6,12 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:real_state/core/handle_errors/error_mapper.dart';
 import 'package:real_state/core/constants/ui_constants.dart';
 import 'package:real_state/core/utils/single_flight_guard.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
 import 'package:real_state/features/auth/domain/repositories/auth_repository_domain.dart';
 import 'package:real_state/core/constants/user_role.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
 import 'package:real_state/features/models/entities/property.dart';
-import 'package:real_state/features/properties/data/datasources/location_area_remote_datasource.dart';
+import 'package:real_state/features/location/domain/repositories/location_areas_repository.dart';
 import 'package:real_state/features/properties/domain/usecases/get_broker_properties_page_usecase.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_bloc.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_state.dart';
@@ -22,7 +22,7 @@ import 'broker_properties_state.dart';
 class BrokerPropertiesBloc
     extends Bloc<BrokerPropertiesEvent, BrokerPropertiesState> {
   final GetBrokerPropertiesPageUseCase _getBrokerPage;
-  final LocationAreaRemoteDataSource _areaDs;
+  final LocationAreasRepository _areaRepo;
   final PropertyMutationsBloc _mutations;
   final AuthRepositoryDomain _auth;
   StreamSubscription<PropertyMutation?>? _mutationSub;
@@ -34,7 +34,7 @@ class BrokerPropertiesBloc
 
   BrokerPropertiesBloc(
     this._getBrokerPage,
-    this._areaDs,
+    this._areaRepo,
     this._mutations,
     this._auth,
   ) : super(const BrokerPropertiesInitial()) {
@@ -270,7 +270,7 @@ class BrokerPropertiesBloc
         .toList();
     if (ids.isEmpty) return {};
     try {
-      return await _areaDs.fetchNamesByIds(ids);
+      return await _areaRepo.fetchNamesByIds(ids);
     } catch (_) {
       return {};
     }

@@ -153,7 +153,10 @@ extension _PropertyEditorActions on _PropertyEditorPageState {
       if (!_images.any((e) => e.isCover) && _images.isNotEmpty) {
         _images.first.isCover = true;
       }
-      final upload = await _uploadService.uploadImages(_images, propertyId);
+      final upload = await context.read<UploadPropertyImagesUseCase>().call(
+        _images,
+        propertyId,
+      );
       final nowCover = upload.coverUrl;
       final description = _descCtrl.text.trim();
       final phone = _phoneCtrl.text.trim();
@@ -162,11 +165,11 @@ extension _PropertyEditorActions on _PropertyEditorPageState {
       final locationValue = locationUrl.isEmpty ? null : locationUrl;
       final price = Validators.parsePrice(_priceCtrl.text);
       if (price == null || price <= 0) {
-          AppSnackbar.show(
-            context,
-            'price_invalid'.tr(),
-            type: AppSnackbarType.error,
-          );
+        AppSnackbar.show(
+          context,
+          'price_invalid'.tr(),
+          type: AppSnackbarType.error,
+        );
         return;
       }
 
@@ -217,7 +220,7 @@ extension _PropertyEditorActions on _PropertyEditorPageState {
           imageUrls: upload.urls,
           coverImageUrl: nowCover,
         );
-        await _uploadService.deleteRemovedRemoteImages(
+        await context.read<DeletePropertyImagesUseCase>().call(
           removedUrls: _originalRemoteImages
               .difference(upload.urls.toSet())
               .toList(),

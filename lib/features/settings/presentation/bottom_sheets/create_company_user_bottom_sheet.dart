@@ -92,10 +92,7 @@ class _CreateCompanyUserBottomSheetState
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'add_user'.tr(),
-              style: theme.textTheme.headlineSmall,
-            ),
+            Text('add_user'.tr(), style: theme.textTheme.headlineSmall),
             const SizedBox(height: 16),
             Form(
               key: _formKey,
@@ -122,16 +119,18 @@ class _CreateCompanyUserBottomSheetState
                     controller: _emailCtrl,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
-                    validator: (v) =>
-                        Validators.isEmail(v) ? null : 'valid_email_required'.tr(),
+                    validator: (v) => Validators.isEmail(v)
+                        ? null
+                        : 'valid_email_required'.tr(),
                   ),
                   const SizedBox(height: 12),
                   AppTextField(
                     label: 'job_title'.tr(),
                     controller: _jobTitleCtrl,
                     textInputAction: TextInputAction.next,
-                    validator: (v) =>
-                        Validators.isNotEmpty(v) ? null : 'job_title_required'.tr(),
+                    validator: (v) => Validators.isNotEmpty(v)
+                        ? null
+                        : 'job_title_required'.tr(),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<UserRole>(
@@ -151,7 +150,8 @@ class _CreateCompanyUserBottomSheetState
                         child: Text('owner'.tr()),
                       ),
                     ],
-                    validator: (r) => Validators.isSelected(r) ? null : 'role_required'.tr(),
+                    validator: (r) =>
+                        Validators.isSelected(r) ? null : 'role_required'.tr(),
                     onChanged: (value) {
                       if (value == null) return;
                       setState(() => _role = value);
@@ -179,10 +179,11 @@ class _CreateCompanyUserBottomSheetState
                     label: 'confirm_password'.tr(),
                     controller: _confirmPasswordCtrl,
                     obscureText: true,
-                    validator: (v) => Validators.passwordsMatch(
-                              _passwordCtrl.text.trim(),
-                              v?.trim(),
-                            )
+                    validator: (v) =>
+                        Validators.passwordsMatch(
+                          _passwordCtrl.text.trim(),
+                          v?.trim(),
+                        )
                         ? null
                         : 'passwords_not_match'.tr(),
                     onFieldSubmitted: (_) => _refreshValidity(),

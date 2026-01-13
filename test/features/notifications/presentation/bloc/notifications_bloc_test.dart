@@ -6,7 +6,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:real_state/core/constants/user_role.dart';
 import 'package:real_state/core/handle_errors/error_mapper.dart';
-import 'package:real_state/features/access_requests/data/repositories/access_requests_repository.dart';
+import 'package:real_state/features/access_requests/domain/repositories/access_requests_repository.dart';
 import 'package:real_state/features/access_requests/domain/usecases/accept_access_request_usecase.dart';
 import 'package:real_state/features/access_requests/domain/usecases/reject_access_request_usecase.dart';
 import 'package:real_state/features/auth/domain/entities/user_entity.dart';
@@ -14,19 +14,24 @@ import 'package:real_state/features/auth/domain/repositories/auth_repository_dom
 import 'package:real_state/features/models/entities/access_request.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
 import 'package:real_state/features/models/entities/property.dart';
-import 'package:real_state/features/notifications/data/services/fcm_service.dart';
+import 'package:real_state/features/notifications/domain/services/notification_messaging_service.dart';
 import 'package:real_state/features/notifications/domain/entities/app_notification.dart';
 import 'package:real_state/features/notifications/domain/entities/notifications_page.dart';
 import 'package:real_state/features/notifications/domain/repositories/notifications_repository.dart';
 import 'package:real_state/features/notifications/presentation/bloc/notifications_bloc.dart';
 import 'package:real_state/features/notifications/presentation/bloc/notifications_event.dart';
 import 'package:real_state/features/notifications/presentation/bloc/notifications_state.dart';
-import 'package:real_state/features/properties/data/datasources/location_area_remote_datasource.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
+import 'package:real_state/features/location/domain/repositories/location_areas_repository.dart';
+import 'package:real_state/features/properties/data/repositories/properties_repository_impl.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart'
+    show PageResult;
 import 'package:real_state/features/properties/domain/property_owner_scope.dart';
 
 class _FakeNotificationsRepo implements NotificationsRepository {
-  _FakeNotificationsRepo({required this.pages, this.fetchDelay = Duration.zero});
+  _FakeNotificationsRepo({
+    required this.pages,
+    this.fetchDelay = Duration.zero,
+  });
 
   final List<NotificationsPage> pages;
   final Duration fetchDelay;
@@ -36,7 +41,11 @@ class _FakeNotificationsRepo implements NotificationsRepository {
   final List<String> marked = [];
 
   @override
-  Future<NotificationsPage> fetchPage({required String userId, startAfter, int limit = 10}) async {
+  Future<NotificationsPage> fetchPage({
+    required String userId,
+    startAfter,
+    int limit = 10,
+  }) async {
     fetchCount++;
     if (throwOnFetch) throw Exception('fail');
     if (fetchDelay > Duration.zero) {
@@ -44,7 +53,11 @@ class _FakeNotificationsRepo implements NotificationsRepository {
     }
     return pages.isNotEmpty
         ? pages.removeAt(0)
-        : NotificationsPage(items: const [], lastDocument: null, hasMore: false);
+        : NotificationsPage(
+            items: const [],
+            lastDocument: null,
+            hasMore: false,
+          );
   }
 
   @override
@@ -78,20 +91,24 @@ class _FakeNotificationsRepo implements NotificationsRepository {
   }) async {}
 
   @override
-  Future<void> sendPropertyAdded({required Property property, required String brief}) async {}
+  Future<void> sendPropertyAdded({
+    required Property property,
+    required String brief,
+  }) async {}
 }
 
 class _FakeAuthRepo implements AuthRepositoryDomain {
   _FakeAuthRepo(this._initialUser);
 
   final UserEntity? _initialUser;
-  late final StreamController<UserEntity?> _controller = StreamController<UserEntity?>.broadcast(
-    onListen: () {
-      if (_initialUser != null) {
-        _controller.add(_initialUser);
-      }
-    },
-  );
+  late final StreamController<UserEntity?> _controller =
+      StreamController<UserEntity?>.broadcast(
+        onListen: () {
+          if (_initialUser != null) {
+            _controller.add(_initialUser);
+          }
+        },
+      );
 
   void setUser(UserEntity? user) => _controller.add(user);
 
@@ -102,7 +119,8 @@ class _FakeAuthRepo implements AuthRepositoryDomain {
   Stream<UserEntity?> get userChanges => _controller.stream;
 
   @override
-  Future<UserEntity> signInWithEmail(String email, String password) => throw UnimplementedError();
+  Future<UserEntity> signInWithEmail(String email, String password) =>
+      throw UnimplementedError();
 
   @override
   Future<UserEntity> signUp({
@@ -116,15 +134,20 @@ class _FakeAuthRepo implements AuthRepositoryDomain {
   Future<void> signOut() => throw UnimplementedError();
 }
 
-class _StubFcmService extends FcmService {
-  _StubFcmService() : super(FakeFirebaseMessaging(), FakeFirebaseFirestore(), FakeFirebaseAuth());
-  final StreamController<AppNotification> _fg = StreamController<AppNotification>.broadcast();
+class _StubNotificationMessagingService
+    implements NotificationMessagingService {
+  _StubNotificationMessagingService();
+
+  final StreamController<AppNotification> _fg =
+      StreamController<AppNotification>.broadcast();
+  final StreamController<AppNotification> _tap =
+      StreamController<AppNotification>.broadcast();
 
   @override
   Stream<AppNotification> get foregroundNotifications => _fg.stream;
 
   @override
-  Stream<AppNotification> get notificationTaps => const Stream.empty();
+  Stream<AppNotification> get notificationTaps => _tap.stream;
 
   @override
   Future<void> initialize() async {}
@@ -138,19 +161,17 @@ class _StubFcmService extends FcmService {
   @override
   Future<AppNotification?> initialMessage() async => null;
 
-  @override
-  Future<List<String>> fetchTokensForUsers(List<String> userIds) async => [];
+  void emitForeground(AppNotification notification) => _fg.add(notification);
 
-  @override
-  Future<void> sendToTokens({
-    required List<String> tokens,
-    required String title,
-    required String body,
-    required Map<String, dynamic> notificationData,
-  }) async {}
+  void emitTap(AppNotification notification) => _tap.add(notification);
+
+  void dispose() {
+    _fg.close();
+    _tap.close();
+  }
 }
 
-class _FakePropertiesRepo extends PropertiesRepository {
+class _FakePropertiesRepo extends PropertiesRepositoryImpl {
   _FakePropertiesRepo(this.map) : super(FakeFirebaseFirestore());
   final Map<String, Property?> map;
 
@@ -164,8 +185,8 @@ class _FakePropertiesRepo extends PropertiesRepository {
   }
 }
 
-class _FakeLocationAreaDataSource extends LocationAreaRemoteDataSource {
-  _FakeLocationAreaDataSource(this.names) : super(FakeFirebaseFirestore());
+class _FakeLocationAreasRepository implements LocationAreasRepository {
+  _FakeLocationAreasRepository(this.names);
   final Map<String, LocationArea> names;
 
   @override
@@ -176,6 +197,9 @@ class _FakeLocationAreaDataSource extends LocationAreaRemoteDataSource {
     }
     return res;
   }
+
+  @override
+  Future<Map<String, LocationArea>> fetchAll() async => Map.of(names);
 }
 
 class _FakeAcceptUseCase extends AcceptAccessRequestUseCase {
@@ -228,8 +252,8 @@ class _FakeRejectUseCase extends RejectAccessRequestUseCase {
   }
 }
 
-class _FakeAccessRequestsRepo extends AccessRequestsRepository {
-  _FakeAccessRequestsRepo() : super(FakeFirebaseFirestore());
+class _FakeAccessRequestsRepo implements AccessRequestsRepository {
+  _FakeAccessRequestsRepo();
 
   @override
   Future<AccessRequest?> fetchLatestAcceptedRequest({
@@ -300,7 +324,10 @@ class FakeFirebaseAuth implements fb_auth.FirebaseAuth {
   noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-AppNotification _notification({required String id, AccessRequestStatus? status}) => AppNotification(
+AppNotification _notification({
+  required String id,
+  AccessRequestStatus? status,
+}) => AppNotification(
   id: id,
   type: AppNotificationType.accessRequest,
   title: 'n$id',
@@ -334,9 +361,9 @@ void main() {
     final b = NotificationsBloc(
       repo,
       auth,
-      _StubFcmService(),
+      _StubNotificationMessagingService(),
       _FakePropertiesRepo(props),
-      _FakeLocationAreaDataSource(areaNames),
+      _FakeLocationAreasRepository(areaNames),
       acceptUseCase,
       rejectUseCase,
     );
@@ -350,10 +377,17 @@ void main() {
 
   test('initial load success', () async {
     final items = [_notification(id: '1')];
-    bloc = _buildBloc(pages: [NotificationsPage(items: items, lastDocument: null, hasMore: false)]);
+    bloc = _buildBloc(
+      pages: [
+        NotificationsPage(items: items, lastDocument: null, hasMore: false),
+      ],
+    );
     final emitted = <NotificationsState>[];
     final sub = bloc.stream.listen(emitted.add);
-    final states = await bloc.stream.take(2).toList().timeout(const Duration(seconds: 1));
+    final states = await bloc.stream
+        .take(2)
+        .toList()
+        .timeout(const Duration(seconds: 1));
     expect(states[0], isA<NotificationsLoading>());
     expect(states[1], isA<NotificationsLoaded>());
     expect((states[1] as NotificationsLoaded).items, items);
@@ -382,7 +416,11 @@ void main() {
     bloc = _buildBloc(
       pages: [
         NotificationsPage(items: items, lastDocument: null, hasMore: false),
-        NotificationsPage(items: [_notification(id: '2')], lastDocument: null, hasMore: false),
+        NotificationsPage(
+          items: [_notification(id: '2')],
+          lastDocument: null,
+          hasMore: false,
+        ),
       ],
     );
     final emitted = <NotificationsState>[];
@@ -407,7 +445,9 @@ void main() {
       ],
       props: {'p1': _fakeProperty('p1'), 'p2': _fakeProperty('p2')},
     );
-    final loadedFuture = bloc.stream.firstWhere((s) => s is NotificationsLoaded);
+    final loadedFuture = bloc.stream.firstWhere(
+      (s) => s is NotificationsLoaded,
+    );
     await loadedFuture;
     final initialFetchCount = repo.fetchCount;
     bloc.add(const NotificationsLoadMoreRequested());
@@ -423,10 +463,16 @@ void main() {
 
   test('load more ignored when hasMore false', () async {
     final items = [_notification(id: '1')];
-    bloc = _buildBloc(pages: [NotificationsPage(items: items, lastDocument: null, hasMore: false)]);
+    bloc = _buildBloc(
+      pages: [
+        NotificationsPage(items: items, lastDocument: null, hasMore: false),
+      ],
+    );
     final emitted = <NotificationsState>[];
     final sub = bloc.stream.listen(emitted.add);
-    final loadedFuture = bloc.stream.firstWhere((s) => s is NotificationsLoaded);
+    final loadedFuture = bloc.stream.firstWhere(
+      (s) => s is NotificationsLoaded,
+    );
     await loadedFuture;
     emitted.clear();
     bloc.add(const NotificationsLoadMoreRequested());
@@ -441,7 +487,11 @@ void main() {
     final repoWithDelay = _FakeNotificationsRepo(
       pages: [
         NotificationsPage(items: first, lastDocument: null, hasMore: true),
-        NotificationsPage(items: [_notification(id: '2')], lastDocument: null, hasMore: false),
+        NotificationsPage(
+          items: [_notification(id: '2')],
+          lastDocument: null,
+          hasMore: false,
+        ),
       ],
       fetchDelay: const Duration(milliseconds: 100),
     );
@@ -449,13 +499,15 @@ void main() {
     bloc = NotificationsBloc(
       repoWithDelay,
       authRepo,
-      _StubFcmService(),
+      _StubNotificationMessagingService(),
       _FakePropertiesRepo({'p1': _fakeProperty('p1')}),
-      _FakeLocationAreaDataSource(const {}),
+      _FakeLocationAreasRepository(const {}),
       _FakeAcceptUseCase(),
       _FakeRejectUseCase(),
     );
-    final loadedFuture = bloc.stream.firstWhere((s) => s is NotificationsLoaded);
+    final loadedFuture = bloc.stream.firstWhere(
+      (s) => s is NotificationsLoaded,
+    );
     await loadedFuture;
     final emitted = <NotificationsState>[];
     final sub = bloc.stream.listen(emitted.add);
@@ -476,10 +528,15 @@ void main() {
         NotificationsPage(items: [notif], lastDocument: null, hasMore: false),
       ],
     );
-    final loadedFuture = bloc.stream.firstWhere((s) => s is NotificationsLoaded);
+    final loadedFuture = bloc.stream.firstWhere(
+      (s) => s is NotificationsLoaded,
+    );
     await loadedFuture;
     bloc.add(NotificationsMarkReadRequested('1'));
-    final states = await bloc.stream.take(3).toList().timeout(const Duration(seconds: 1));
+    final states = await bloc.stream
+        .take(3)
+        .toList()
+        .timeout(const Duration(seconds: 1));
     expect(states[0], isA<NotificationsActionInProgress>());
     expect(states[1], isA<NotificationsActionSuccess>());
     expect(states[2], isA<NotificationsLoaded>());
@@ -498,7 +555,9 @@ void main() {
     acceptUseCase.shouldThrow = true;
     final emitted = <NotificationsState>[];
     final sub = bloc.stream.listen(emitted.add);
-    final loadedFuture = bloc.stream.firstWhere((s) => s is NotificationsLoaded);
+    final loadedFuture = bloc.stream.firstWhere(
+      (s) => s is NotificationsLoaded,
+    );
     await loadedFuture;
     emitted.clear();
     bloc.add(NotificationsAcceptRequested('1', 'r1'));
@@ -520,7 +579,9 @@ void main() {
     rejectUseCase.shouldThrow = true;
     final emitted = <NotificationsState>[];
     final sub = bloc.stream.listen(emitted.add);
-    final loadedFuture = bloc.stream.firstWhere((s) => s is NotificationsLoaded);
+    final loadedFuture = bloc.stream.firstWhere(
+      (s) => s is NotificationsLoaded,
+    );
     await loadedFuture;
     emitted.clear();
     bloc.add(NotificationsRejectRequested('1', 'r1'));

@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
 
 abstract class BrokerPropertiesEvent extends Equatable {
   const BrokerPropertiesEvent();

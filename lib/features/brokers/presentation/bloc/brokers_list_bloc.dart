@@ -33,13 +33,17 @@ class BrokersListBloc extends Bloc<BrokersListEvent, BrokersListState> {
       _isCollector = user?.role == UserRole.collector;
     });
     _mutationSub = mutations.mutationStream.listen((mutation) {
-      if (mutation.ownerScope == PropertyOwnerScope.broker || mutation.ownerScope == null) {
+      if (mutation.ownerScope == PropertyOwnerScope.broker ||
+          mutation.ownerScope == null) {
         add(const BrokersListRefreshed());
       }
     });
   }
 
-  Future<void> _onRequested(BrokersListEvent event, Emitter<BrokersListState> emit) async {
+  Future<void> _onRequested(
+    BrokersListEvent event,
+    Emitter<BrokersListState> emit,
+  ) async {
     if (_isCollector) {
       emit(BrokersListFailure('access_denied'.tr()));
       return;

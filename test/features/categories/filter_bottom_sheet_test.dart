@@ -1,61 +1,57 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:real_state/core/components/primary_button.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
 import 'package:real_state/features/categories/presentation/widgets/filter_bottom_sheet.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
 
+import '../../helpers/pump_test_app.dart';
+
 void main() {
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    await EasyLocalization.ensureInitialized();
+  });
+
   testWidgets(
     'shows validation error when min price > max price and disables Apply',
     (WidgetTester tester) async {
       final filter = PropertyFilter();
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: FilterBottomSheet(
-              onAddLocation: () async {},
-              currentFilter: filter,
-              locationAreas: [
-                LocationArea(
-                  id: '1',
-                  nameAr: 'Area 1',
-                  nameEn: 'Area 1',
-                  imageUrl: '',
-                  isActive: true,
-                  createdAt: DateTime.now(),
-                ),
-              ],
-              onApply: (_) {},
-            ),
+      await pumpTestApp(
+        tester,
+        Scaffold(
+          body: FilterBottomSheet(
+            onAddLocation: () async {},
+            currentFilter: filter,
+            locationAreas: [
+              LocationArea(
+                id: '1',
+                nameAr: 'Area 1',
+                nameEn: 'Area 1',
+                imageUrl: '',
+                isActive: true,
+                createdAt: DateTime.now(),
+              ),
+            ],
+            onApply: (_) {},
           ),
         ),
       );
 
-      // Initially Apply is enabled
-      expect(find.text('Apply Filters'), findsOneWidget);
-      final applyButton = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, 'Apply Filters'),
-      );
+      final applyFinder = find.byKey(filterApplyButtonKey);
+      await pumpUntilFound(tester, applyFinder);
+      final applyButton = tester.widget<PrimaryButton>(applyFinder);
       expect(applyButton.onPressed, isNotNull);
 
-      // Enter invalid range: Min = 100, Max = 50
-      await tester.enterText(
-        find.widgetWithText(TextField, 'Min Price'),
-        '100',
-      );
-      await tester.enterText(find.widgetWithText(TextField, 'Max Price'), '50');
-      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(filterMinPriceInputKey), '100');
+      await tester.enterText(find.byKey(filterMaxPriceInputKey), '50');
+      await tester.pump(const Duration(milliseconds: 200));
 
-      // Error message shown
-      expect(
-        find.text('Min price must be less than or equal to Max price'),
-        findsOneWidget,
-      );
+      expect(find.text('price_error_range'.tr()), findsOneWidget);
 
-      // Apply button is disabled
-      final applyButtonAfter = tester.widget<ElevatedButton>(
-        find.widgetWithText(ElevatedButton, 'Apply Filters'),
-      );
+      final applyButtonAfter = tester.widget<PrimaryButton>(applyFinder);
       expect(applyButtonAfter.onPressed, isNull);
     },
   );

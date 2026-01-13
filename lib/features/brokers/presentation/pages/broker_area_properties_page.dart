@@ -9,7 +9,7 @@ import 'package:real_state/features/properties/presentation/selection/selection_
 import 'package:real_state/features/brokers/presentation/bloc/properties/broker_area_properties_bloc.dart';
 import 'package:real_state/features/brokers/presentation/bloc/properties/broker_area_properties_event.dart';
 import 'package:real_state/features/brokers/presentation/bloc/properties/broker_area_properties_state.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
 import 'package:real_state/features/categories/presentation/widgets/filter_bottom_sheet.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
 import 'package:real_state/features/models/entities/property.dart';
@@ -33,7 +33,8 @@ class BrokerAreaPropertiesPage extends StatefulWidget {
   });
 
   @override
-  State<BrokerAreaPropertiesPage> createState() => _BrokerAreaPropertiesPageState();
+  State<BrokerAreaPropertiesPage> createState() =>
+      _BrokerAreaPropertiesPageState();
 }
 
 class _BrokerAreaPropertiesPageState extends State<BrokerAreaPropertiesPage> {
@@ -116,7 +117,10 @@ class _BrokerAreaPropertiesPageState extends State<BrokerAreaPropertiesPage> {
         locationAreas: _locationAreasForFilter(areaTitle),
         onAddLocation: () async {},
         onApply: (f) {
-          final enforced = f.copyWith(locationAreaId: widget.areaId, clearLocationAreaId: false);
+          final enforced = f.copyWith(
+            locationAreaId: widget.areaId,
+            clearLocationAreaId: false,
+          );
           setState(() => _filter = enforced);
           _bloc.add(BrokerAreaPropertiesFilterChanged(enforced));
         },
@@ -144,7 +148,9 @@ class _BrokerAreaPropertiesPageState extends State<BrokerAreaPropertiesPage> {
     final areaTitle = (widget.areaName?.isNotEmpty ?? false)
         ? widget.areaName!
         : 'area_unavailable'.tr();
-    final brokerTitle = widget.brokerName?.isNotEmpty == true ? widget.brokerName! : '';
+    final brokerTitle = widget.brokerName?.isNotEmpty == true
+        ? widget.brokerName!
+        : '';
     final pageTitle = brokerTitle.isNotEmpty
         ? 'broker_area_properties_title_fmt'.tr(args: [brokerTitle, areaTitle])
         : areaTitle;
@@ -154,10 +160,10 @@ class _BrokerAreaPropertiesPageState extends State<BrokerAreaPropertiesPage> {
         appBar: _selectionMode
             ? SelectionAppBar(
                 selectedCount: _selected.length,
-                policy: const PropertySelectionPolicy(actions: [PropertyBulkAction.share]),
-                actionCallbacks: {
-                  PropertyBulkAction.share: _shareSelected,
-                },
+                policy: const PropertySelectionPolicy(
+                  actions: [PropertyBulkAction.share],
+                ),
+                actionCallbacks: {PropertyBulkAction.share: _shareSelected},
                 onClearSelection: _clearSelection,
               )
             : CustomAppBar(title: pageTitle),
@@ -171,68 +177,74 @@ class _BrokerAreaPropertiesPageState extends State<BrokerAreaPropertiesPage> {
                 ),
               ),
         body: BaseGradientPage(
-          child: BlocConsumer<BrokerAreaPropertiesBloc, BrokerAreaPropertiesState>(
-            listener: (context, state) {
-              if (state is BrokerAreaPropertiesLoadSuccess) {
-                _refreshController.refreshCompleted();
-                if (state.hasMore) {
-                  _refreshController.loadComplete();
-                } else {
-                  _refreshController.loadNoData();
-                }
-              } else if (state is BrokerAreaPropertiesFailure) {
-                _refreshController.refreshFailed();
-                _refreshController.loadFailed();
-              }
-            },
-            builder: (context, state) {
-              final hasCachedItems = _currentItems.isNotEmpty;
-              final isInitialLoading =
-                  state is BrokerAreaPropertiesInitial ||
-                  (state is BrokerAreaPropertiesLoadInProgress && !hasCachedItems);
+          child:
+              BlocConsumer<BrokerAreaPropertiesBloc, BrokerAreaPropertiesState>(
+                listener: (context, state) {
+                  if (state is BrokerAreaPropertiesLoadSuccess) {
+                    _refreshController.refreshCompleted();
+                    if (state.hasMore) {
+                      _refreshController.loadComplete();
+                    } else {
+                      _refreshController.loadNoData();
+                    }
+                  } else if (state is BrokerAreaPropertiesFailure) {
+                    _refreshController.refreshFailed();
+                    _refreshController.loadFailed();
+                  }
+                },
+                builder: (context, state) {
+                  final hasCachedItems = _currentItems.isNotEmpty;
+                  final isInitialLoading =
+                      state is BrokerAreaPropertiesInitial ||
+                      (state is BrokerAreaPropertiesLoadInProgress &&
+                          !hasCachedItems);
 
-              final List<Property> items;
-              if (state is BrokerAreaPropertiesLoadSuccess) {
-                items = state.items;
-                _hasMore = state.hasMore;
-                _filter = state.filter;
-              } else if (state is BrokerAreaPropertiesLoadMoreInProgress) {
-                items = state.items;
-                _hasMore = state.hasMore;
-                _filter = state.filter;
-              } else if (state is BrokerAreaPropertiesFailure) {
-                items = state.items;
-                _hasMore = state.hasMore;
-                _filter = state.filter;
-              } else {
-                items = _currentItems;
-              }
-              if (state is BrokerAreaPropertiesLoadInProgress) {
-                _filter = state.filter;
-              }
+                  final List<Property> items;
+                  if (state is BrokerAreaPropertiesLoadSuccess) {
+                    items = state.items;
+                    _hasMore = state.hasMore;
+                    _filter = state.filter;
+                  } else if (state is BrokerAreaPropertiesLoadMoreInProgress) {
+                    items = state.items;
+                    _hasMore = state.hasMore;
+                    _filter = state.filter;
+                  } else if (state is BrokerAreaPropertiesFailure) {
+                    items = state.items;
+                    _hasMore = state.hasMore;
+                    _filter = state.filter;
+                  } else {
+                    items = _currentItems;
+                  }
+                  if (state is BrokerAreaPropertiesLoadInProgress) {
+                    _filter = state.filter;
+                  }
 
-              if (!isInitialLoading) {
-                _currentItems = items;
-              }
+                  if (!isInitialLoading) {
+                    _currentItems = items;
+                  }
 
-              return PropertyPaginatedListView(
-                refreshController: _refreshController,
-                items: items,
-                isLoading: isInitialLoading,
-                isError: state is BrokerAreaPropertiesFailure && items.isEmpty,
-                errorMessage: state is BrokerAreaPropertiesFailure ? state.message : null,
-                hasMore: _hasMore,
-                startAreaName: areaTitle,
-                onRefresh: _refresh,
-                onLoadMore: () => _bloc.add(const BrokerAreaPropertiesLoadMore()),
-                onRetry: _refresh,
-                selectionMode: _selectionMode,
-                selectedIds: _selected,
-                onToggleSelection: _toggleSelection,
-                emptyMessage: 'no_broker_properties_in_area'.tr(),
-              );
-            },
-          ),
+                  return PropertyPaginatedListView(
+                    refreshController: _refreshController,
+                    items: items,
+                    isLoading: isInitialLoading,
+                    isError:
+                        state is BrokerAreaPropertiesFailure && items.isEmpty,
+                    errorMessage: state is BrokerAreaPropertiesFailure
+                        ? state.message
+                        : null,
+                    hasMore: _hasMore,
+                    startAreaName: areaTitle,
+                    onRefresh: _refresh,
+                    onLoadMore: () =>
+                        _bloc.add(const BrokerAreaPropertiesLoadMore()),
+                    onRetry: _refresh,
+                    selectionMode: _selectionMode,
+                    selectedIds: _selected,
+                    onToggleSelection: _toggleSelection,
+                    emptyMessage: 'no_broker_properties_in_area'.tr(),
+                  );
+                },
+              ),
         ),
       ),
     );

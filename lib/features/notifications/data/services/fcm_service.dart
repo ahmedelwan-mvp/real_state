@@ -11,6 +11,8 @@ import 'package:real_state/core/handle_errors/error_mapper.dart';
 import 'package:real_state/features/models/entities/access_request.dart';
 import 'package:real_state/features/notifications/domain/entities/app_notification.dart';
 import 'package:real_state/firebase_options.dart';
+import 'package:real_state/features/notifications/domain/services/notification_delivery_service.dart';
+import 'package:real_state/features/notifications/domain/services/notification_messaging_service.dart';
 
 /// Background message handler must be a top-level function.
 Future<void> fcmBackgroundHandler(RemoteMessage message) async {
@@ -18,7 +20,8 @@ Future<void> fcmBackgroundHandler(RemoteMessage message) async {
 }
 
 /// Centralized FCM handler for token management and message parsing.
-class FcmService {
+class FcmService
+    implements NotificationMessagingService, NotificationDeliveryService {
   final FirebaseMessaging _messaging;
   final FirebaseFirestore _firestore;
   final fb_auth.FirebaseAuth _auth;
@@ -41,10 +44,13 @@ class FcmService {
       (defaultTargetPlatform == TargetPlatform.iOS ||
           defaultTargetPlatform == TargetPlatform.macOS);
 
+  @override
   Stream<AppNotification> get foregroundNotifications =>
       _foregroundController.stream;
+  @override
   Stream<AppNotification> get notificationTaps => _tapController.stream;
 
+  @override
   Future<void> initialize() async {
     await _messaging.setForegroundNotificationPresentationOptions(
       alert: false,
@@ -56,6 +62,7 @@ class FcmService {
     _messaging.onTokenRefresh.listen(_handleTokenRefresh);
   }
 
+  @override
   Future<void> attachUser(String? userId) async {
     if (userId == null) {
       await _deleteCurrentToken(forUser: _currentUserId);
@@ -74,6 +81,7 @@ class FcmService {
     }
   }
 
+  @override
   Future<void> detachUser() async {
     try {
       await _deleteCurrentToken(forUser: _currentUserId);
@@ -86,12 +94,14 @@ class FcmService {
     }
   }
 
+  @override
   Future<AppNotification?> initialMessage() async {
     final message = await _messaging.getInitialMessage();
     if (message == null) return null;
     return _parseMessage(message);
   }
 
+  @override
   Future<List<String>> fetchTokensForUsers(List<String> userIds) async {
     final tokens = <String>{};
     for (final id in userIds) {
@@ -113,13 +123,20 @@ class FcmService {
     return tokens.toList();
   }
 
-  Future<void> sendToTokens({
+  @override
+  Future<NotificationDeliveryResult> sendNotificationToTokens({
     required List<String> tokens,
     required String title,
     required String body,
     required Map<String, dynamic> notificationData,
   }) async {
-    if (tokens.isEmpty) return;
+    if (tokens.isEmpty) {
+      return const NotificationDeliveryResult(
+        successCount: 0,
+        failureCount: 0,
+        failures: [],
+      );
+    }
     final functions = FirebaseFunctions.instanceFor(region: 'us-central1');
     final callable = functions.httpsCallable('sendNotification');
     try {
@@ -129,32 +146,79 @@ class FcmService {
         'body': body,
         'notificationData': notificationData,
       });
-      _logCallableResult(result.data);
+      final deliveryResult = _mapDeliveryResult(result.data);
+      _logDeliveryResult(deliveryResult);
+      return deliveryResult;
     } on FirebaseFunctionsException catch (e) {
       if (e.code == 'not-found') {
         debugPrint('sendNotification not deployed or wrong project/region');
       }
       debugPrint('sendNotification failed (${e.code}): ${e.message}');
+      return NotificationDeliveryResult(
+        successCount: 0,
+        failureCount: tokens.length,
+        failures: [
+          NotificationDeliveryFailure(
+            token: 'unknown',
+            error: e.message ?? 'send_notification_failed',
+          ),
+        ],
+      );
     } catch (e, st) {
       debugPrint('sendNotification call failed: $e');
       if (kDebugMode) {
         debugPrint('Stacktrace: $st');
       }
+      return NotificationDeliveryResult(
+        successCount: 0,
+        failureCount: tokens.length,
+        failures: [
+          NotificationDeliveryFailure(token: 'unknown', error: e.toString()),
+        ],
+      );
     }
   }
 
-  void _logCallableResult(Object? data) {
-    if (!kDebugMode) return;
-    if (data is Map<String, dynamic>) {
-      final successCount = data['successCount'] ?? data['success'] ?? 0;
-      final failureCount = data['failureCount'] ?? data['failure'] ?? 0;
-      final errors = data['errors'] as List<dynamic>? ?? const [];
-      debugPrint(
-        'sendNotification result: successCount=$successCount failureCount=$failureCount errors=${errors.length}',
+  NotificationDeliveryResult _mapDeliveryResult(Object? payload) {
+    if (payload is! Map<String, dynamic>) {
+      return const NotificationDeliveryResult(
+        successCount: 0,
+        failureCount: 0,
+        failures: [],
       );
-      return;
     }
-    debugPrint('sendNotification result payload: $data');
+    final successCount =
+        (payload['successCount'] as int?) ?? (payload['success'] as int?) ?? 0;
+    final failureCount =
+        (payload['failureCount'] as int?) ?? (payload['failure'] as int?) ?? 0;
+    final rawFailures = payload['failures'];
+    final failures = <NotificationDeliveryFailure>[];
+    if (rawFailures is Iterable) {
+      for (final raw in rawFailures) {
+        if (raw is! Map<String, dynamic>) continue;
+        final token = raw['token'] as String?;
+        final error = raw['error'] as String?;
+        if (token == null || token.isEmpty) continue;
+        failures.add(
+          NotificationDeliveryFailure(
+            token: token,
+            error: error?.isNotEmpty == true ? error! : 'unknown',
+          ),
+        );
+      }
+    }
+    return NotificationDeliveryResult(
+      successCount: successCount,
+      failureCount: failureCount,
+      failures: failures,
+    );
+  }
+
+  void _logDeliveryResult(NotificationDeliveryResult result) {
+    if (!kDebugMode) return;
+    debugPrint(
+      'sendNotification result: successCount=${result.successCount} failureCount=${result.failureCount} failures=${result.failures.length}',
+    );
   }
 
   Future<void> _registerInitialToken(String userId) async {

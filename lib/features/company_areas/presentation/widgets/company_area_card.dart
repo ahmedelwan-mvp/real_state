@@ -13,7 +13,9 @@ class CompanyAreaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final name = area.name.isNotEmpty ? area.name : 'area_unavailable'.tr();
-    final countLabel = 'properties_count_format'.tr(args: [area.count.toString()]);
+    final countLabel = 'properties_count_format'.tr(
+      args: [area.count.toString()],
+    );
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 1,
@@ -45,7 +47,9 @@ class CompanyAreaCard extends StatelessWidget {
                       name,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
@@ -73,7 +77,9 @@ class _AreaImagePlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final initials = name.isNotEmpty ? name.characters.take(2).toString() : '--';
+    final initials = name.isNotEmpty
+        ? name.characters.take(2).toString()
+        : '--';
     return ClipRRect(
       borderRadius: BorderRadius.circular(14),
       child: Container(

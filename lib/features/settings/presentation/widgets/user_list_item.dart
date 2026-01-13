@@ -16,6 +16,7 @@ class UserListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
+      key: ValueKey('manage_user_${user.id}'),
       title: Text(user.name ?? user.email ?? ''),
       subtitle: Text(user.email ?? ''),
       trailing: Row(

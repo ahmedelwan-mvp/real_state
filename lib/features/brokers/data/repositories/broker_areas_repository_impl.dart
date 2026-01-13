@@ -8,7 +8,8 @@ class BrokerAreasRepositoryImpl implements BrokerAreasRepository {
   final BrokerAreasRemoteDataSource _remote;
   final int _pageSize;
 
-  BrokerAreasRepositoryImpl(this._remote, {int pageSize = 50}) : _pageSize = pageSize;
+  BrokerAreasRepositoryImpl(this._remote, {int pageSize = 50})
+    : _pageSize = pageSize;
 
   @override
   Future<List<BrokerArea>> fetchBrokerAreas(
@@ -38,8 +39,11 @@ class BrokerAreasRepositoryImpl implements BrokerAreasRepository {
     final areas =
         areaIds
             .map(
-              (id) =>
-                  BrokerArea(id: id, name: _resolveName(id, names), propertyCount: counts[id] ?? 0),
+              (id) => BrokerArea(
+                id: id,
+                name: _resolveName(id, names),
+                propertyCount: counts[id] ?? 0,
+              ),
             )
             .toList()
           ..sort((a, b) => a.name.compareTo(b.name));
@@ -66,7 +70,8 @@ class BrokerAreasRepositoryImpl implements BrokerAreasRepository {
 
       for (final property in page.items) {
         final areaId = property.locationAreaId;
-        if (areaId == null || areaId.isEmpty || !areaIds.contains(areaId)) continue;
+        if (areaId == null || areaId.isEmpty || !areaIds.contains(areaId))
+          continue;
         counts[areaId] = (counts[areaId] ?? 0) + 1;
       }
 

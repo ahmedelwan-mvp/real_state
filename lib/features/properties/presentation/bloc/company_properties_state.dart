@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
 import 'package:real_state/features/models/entities/property.dart';
 
@@ -90,5 +90,12 @@ class CompanyPropertiesFailure extends CompanyPropertiesState {
   });
 
   @override
-  List<Object?> get props => [message, items, lastDoc, hasMore, filter, areaNames];
+  List<Object?> get props => [
+    message,
+    items,
+    lastDoc,
+    hasMore,
+    filter,
+    areaNames,
+  ];
 }

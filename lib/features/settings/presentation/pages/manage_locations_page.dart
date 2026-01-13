@@ -10,7 +10,7 @@ import 'package:real_state/core/components/custom_app_bar.dart';
 import 'package:real_state/core/components/empty_state_widget.dart';
 import 'package:real_state/core/components/loading_dialog.dart';
 import 'package:real_state/features/auth/domain/repositories/auth_repository_domain.dart';
-import 'package:real_state/features/location/data/repositories/location_repository.dart';
+import 'package:real_state/features/location/domain/repositories/location_repository.dart';
 import 'package:real_state/features/location/domain/usecases/get_location_areas_usecase.dart';
 import 'package:real_state/features/location/presentation/widgets/location_area_card.dart';
 import 'package:real_state/features/location/presentation/widgets/location_area_form_dialog.dart';
@@ -64,7 +64,8 @@ class _ManageLocationsViewState extends State<_ManageLocationsView> {
           );
         }
 
-        if (state is ManageLocationsFailure && state is! ManageLocationsDataState) {
+        if (state is ManageLocationsFailure &&
+            state is! ManageLocationsDataState) {
           return Scaffold(
             appBar: const CustomAppBar(title: 'manage_locations'),
             body: AppErrorView(
@@ -76,7 +77,8 @@ class _ManageLocationsViewState extends State<_ManageLocationsView> {
 
         final dataState = state is ManageLocationsDataState ? state : null;
         final showSkeleton =
-            state is ManageLocationsCheckingAccess || state is ManageLocationsLoadInProgress;
+            state is ManageLocationsCheckingAccess ||
+            state is ManageLocationsLoadInProgress;
 
         if (showSkeleton) {
           return Scaffold(
@@ -91,7 +93,8 @@ class _ManageLocationsViewState extends State<_ManageLocationsView> {
         }
 
         final items = dataState?.items ?? [];
-        final canInteract = dataState != null && state is! ManageLocationsActionInProgress;
+        final canInteract =
+            dataState != null && state is! ManageLocationsActionInProgress;
 
         return Scaffold(
           appBar: const CustomAppBar(title: 'manage_locations'),
@@ -112,10 +115,16 @@ class _ManageLocationsViewState extends State<_ManageLocationsView> {
                         area: it,
                         localeCode: context.locale.toString(),
                         onEdit: canInteract && _isAreaComplete(it)
-                            ? () => _edit(context.read<ManageLocationsCubit>(), it)
+                            ? () => _edit(
+                                context.read<ManageLocationsCubit>(),
+                                it,
+                              )
                             : null,
                         onDelete: canInteract && _isAreaComplete(it)
-                            ? () => _delete(context.read<ManageLocationsCubit>(), it)
+                            ? () => _delete(
+                                context.read<ManageLocationsCubit>(),
+                                it,
+                              )
                             : null,
                       ),
                     );
@@ -136,7 +145,11 @@ class _ManageLocationsViewState extends State<_ManageLocationsView> {
     if (res == null || res.imageFile == null) return;
     await LoadingDialog.show(
       context,
-      cubit.create(nameAr: res.nameAr, nameEn: res.nameEn, imageFile: res.imageFile!),
+      cubit.create(
+        nameAr: res.nameAr,
+        nameEn: res.nameEn,
+        imageFile: res.imageFile!,
+      ),
     );
   }
 
@@ -145,7 +158,12 @@ class _ManageLocationsViewState extends State<_ManageLocationsView> {
     if (res == null) return;
     await LoadingDialog.show(
       context,
-      cubit.update(item, nameAr: res.nameAr, nameEn: res.nameEn, imageFile: res.imageFile),
+      cubit.update(
+        item,
+        nameAr: res.nameAr,
+        nameEn: res.nameEn,
+        imageFile: res.imageFile,
+      ),
     );
   }
 

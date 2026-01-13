@@ -4,11 +4,11 @@ import 'package:bloc/bloc.dart';
 import 'package:real_state/core/constants/ui_constants.dart';
 import 'package:real_state/core/handle_errors/error_mapper.dart';
 import 'package:real_state/core/utils/single_flight_guard.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
 import 'package:real_state/features/models/entities/property.dart';
-import 'package:real_state/features/properties/data/datasources/location_area_remote_datasource.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
+import 'package:real_state/features/location/domain/repositories/location_areas_repository.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart';
 import 'package:real_state/features/properties/presentation/bloc/properties_event.dart';
 import 'package:real_state/features/properties/presentation/bloc/properties_state.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_bloc.dart';
@@ -16,7 +16,7 @@ import 'package:real_state/features/properties/presentation/bloc/property_mutati
 
 class PropertiesBloc extends Bloc<PropertiesEvent, PropertiesState> {
   final PropertiesRepository _repo;
-  final LocationAreaRemoteDataSource _areaDs;
+  final LocationAreasRepository _areaRepo;
   final PropertyMutationsBloc _mutations;
   StreamSubscription<PropertyMutation>? _mutationSub;
   final SingleFlightGuard _requestGuard = SingleFlightGuard();
@@ -24,7 +24,7 @@ class PropertiesBloc extends Bloc<PropertiesEvent, PropertiesState> {
   bool _isLoadingMore = false;
   PropertyFilter? _currentFilter;
 
-  PropertiesBloc(this._repo, this._areaDs, this._mutations)
+  PropertiesBloc(this._repo, this._areaRepo, this._mutations)
     : super(const PropertiesInitial()) {
     on<PropertiesStarted>(_onStarted);
     on<PropertiesRefreshed>(_onRefreshed);
@@ -210,7 +210,7 @@ class PropertiesBloc extends Bloc<PropertiesEvent, PropertiesState> {
         .toList();
     if (ids.isEmpty) return {};
     try {
-      final res = await _areaDs.fetchNamesByIds(ids);
+      final res = await _areaRepo.fetchNamesByIds(ids);
       return res;
     } catch (_) {
       return {};

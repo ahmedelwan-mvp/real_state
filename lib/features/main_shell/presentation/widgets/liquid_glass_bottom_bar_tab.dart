@@ -80,9 +80,7 @@ class LiquidGlassBottomBarTab extends StatelessWidget {
                             transform: selected
                                 ? Matrix4.identity()
                                 : (Matrix4.identity()
-                                    ..scaleByVector3(
-                                      vmath.Vector3.all(0.4),
-                                    )
+                                    ..scaleByVector3(vmath.Vector3.all(0.4))
                                     ..rotateZ(-math.pi)),
                             child: AnimatedOpacity(
                               duration: const Duration(milliseconds: 300),

@@ -428,13 +428,7 @@ class _IndicatorTransform extends StatelessWidget {
     final matrix = Matrix4.identity();
 
     // Apply scale transformation
-    matrix.scaleByVector3(
-      vmath.Vector3(
-        scaleX,
-        scaleY,
-        1,
-      ),
-    );
+    matrix.scaleByVector3(vmath.Vector3(scaleX, scaleY, 1));
 
     return matrix;
   }

@@ -31,10 +31,10 @@ class CategoryPropertyCard extends StatelessWidget {
       areaName: areaName,
       onTap: onTap,
       canViewImages: canViewImages,
-       selectionMode: selectionMode,
-       selected: selected,
-       onSelectToggle: onSelectToggle,
-       onLongPressSelect: onLongPressSelect,
+      selectionMode: selectionMode,
+      selected: selected,
+      onSelectToggle: onSelectToggle,
+      onLongPressSelect: onLongPressSelect,
     );
   }
 }

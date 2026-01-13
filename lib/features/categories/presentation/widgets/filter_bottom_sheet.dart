@@ -1,13 +1,20 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:real_state/core/components/app_text_field.dart';
 import 'package:real_state/core/components/primary_button.dart';
 import 'package:real_state/core/constants/aed_text.dart';
 import 'package:real_state/core/utils/price_formatter.dart';
 import 'package:real_state/core/validation/validators.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
+import 'package:real_state/features/categories/domain/usecases/apply_property_filter_usecase.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
+
+const filterApplyButtonKey = ValueKey('filter_apply_btn');
+const filterClearButtonKey = ValueKey('filter_clear_btn');
+const filterMinPriceInputKey = ValueKey('filter_min_price_input');
+const filterMaxPriceInputKey = ValueKey('filter_max_price_input');
 
 class FilterBottomSheet extends StatefulWidget {
   final PropertyFilter currentFilter;
@@ -31,17 +38,18 @@ class FilterBottomSheet extends StatefulWidget {
 
 class _FilterBottomSheetState extends State<FilterBottomSheet> {
   final _formKey = GlobalKey<FormState>();
+  late final ApplyPropertyFilterUseCase _applyFilterUseCase;
   late String? _selectedLocationId;
   late TextEditingController _minPriceCtrl;
   late TextEditingController _maxPriceCtrl;
   late int? _selectedRooms;
   late bool _hasPool;
   bool _formattingPrice = false;
-  String? _priceError;
 
   @override
   void initState() {
     super.initState();
+    _applyFilterUseCase = context.read<ApplyPropertyFilterUseCase>();
     final f = widget.currentFilter;
     _selectedLocationId = f.locationAreaId;
     _minPriceCtrl = TextEditingController(
@@ -58,7 +66,6 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     _hasPool = f.hasPool ?? false;
     _minPriceCtrl.addListener(() => _formatPrice(_minPriceCtrl));
     _maxPriceCtrl.addListener(() => _formatPrice(_maxPriceCtrl));
-    _validatePriceRange();
   }
 
   @override
@@ -69,25 +76,31 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
   }
 
   void _onApply() {
-    final valid = _formKey.currentState?.validate() ?? false;
-    if (!valid) return;
-    final minP = Validators.parsePrice(_minPriceCtrl.text);
-    final maxP = Validators.parsePrice(_maxPriceCtrl.text);
-
-    final newFilter = PropertyFilter(
-      locationAreaId: _selectedLocationId,
-      minPrice: minP,
-      maxPrice: maxP,
-      rooms: _selectedRooms,
-      hasPool: _hasPool ? true : null,
-    );
-    widget.onApply(newFilter);
+    final candidate = _buildCandidateFilter();
+    final validation = _applyFilterUseCase(candidate);
+    if (!validation.isSuccess) {
+      setState(() {});
+      return;
+    }
+    widget.onApply(validation.filter!);
     context.pop();
   }
 
   String _stripCurrency(String input) {
     final cleaned = input.replaceAll(RegExp(r'[^\d.]'), '');
     return cleaned;
+  }
+
+  PropertyFilter _buildCandidateFilter() {
+    final minP = Validators.parsePrice(_minPriceCtrl.text);
+    final maxP = Validators.parsePrice(_maxPriceCtrl.text);
+    return PropertyFilter(
+      locationAreaId: _selectedLocationId,
+      minPrice: minP,
+      maxPrice: maxP,
+      rooms: _selectedRooms,
+      hasPool: _hasPool ? true : null,
+    );
   }
 
   void _onClear() {
@@ -115,19 +128,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
         );
       }
     }
-    _validatePriceRange();
     _formattingPrice = false;
     setState(() {});
-  }
-
-  void _validatePriceRange() {
-    final minP = Validators.parsePrice(_minPriceCtrl.text);
-    final maxP = Validators.parsePrice(_maxPriceCtrl.text);
-    if (minP != null && maxP != null && minP > maxP) {
-      _priceError = 'price_error_range'.tr();
-    } else {
-      _priceError = null;
-    }
   }
 
   @override
@@ -135,7 +137,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
-    final isApplyEnabled = (_priceError == null);
+    final candidateFilter = _buildCandidateFilter();
+    final validation = _applyFilterUseCase(candidateFilter);
+    final isApplyEnabled = validation.isSuccess;
+    final validationErrorKey = validation.error?.messageKey;
     final selectedExists = widget.locationAreas.any(
       (l) => l.id == _selectedLocationId,
     );
@@ -202,10 +207,11 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                             (area) => DropdownMenuItem(
                               value: area.id,
                               child: Text(
-                                area.localizedName(
-                                      localeCode: context.locale.toString(),
-                                    )
-                                    .isNotEmpty
+                                area
+                                        .localizedName(
+                                          localeCode: context.locale.toString(),
+                                        )
+                                        .isNotEmpty
                                     ? area.localizedName(
                                         localeCode: context.locale.toString(),
                                       )
@@ -214,8 +220,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                             ),
                           ),
                         ],
-                        onChanged: (val) =>
-                            setState(() => _selectedLocationId = val),
+                        onChanged: (val) {
+                          setState(() => _selectedLocationId = val);
+                        },
                       ),
                     ],
                     const SizedBox(height: 16),
@@ -226,6 +233,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                         Expanded(
                           child: AppTextField(
                             label: 'min_price'.tr(),
+                            key: filterMinPriceInputKey,
                             controller: _minPriceCtrl,
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
@@ -244,7 +252,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                     ),
                               ),
                             ),
-                            validator: (_) => _priceError,
+                            validator: (_) => validationErrorKey?.tr(),
                             textInputAction: TextInputAction.next,
                             onFieldSubmitted: (_) =>
                                 FocusScope.of(context).nextFocus(),
@@ -254,6 +262,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                         Expanded(
                           child: AppTextField(
                             label: 'max_price'.tr(),
+                            key: filterMaxPriceInputKey,
                             controller: _maxPriceCtrl,
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
@@ -272,7 +281,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                                     ),
                               ),
                             ),
-                            validator: (_) => _priceError,
+                            validator: (_) => validationErrorKey?.tr(),
                             textInputAction: TextInputAction.next,
                             onFieldSubmitted: (_) =>
                                 FocusScope.of(context).nextFocus(),
@@ -280,11 +289,11 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                         ),
                       ],
                     ),
-                    if (_priceError != null)
+                    if (validationErrorKey != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 8.0),
                         child: Text(
-                          _priceError!,
+                          validationErrorKey.tr(),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: colorScheme.error,
                           ),
@@ -326,7 +335,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                           child: Text('room_option_5'.tr()),
                         ),
                       ],
-                      onChanged: (val) => setState(() => _selectedRooms = val),
+                      onChanged: (val) {
+                        setState(() => _selectedRooms = val);
+                      },
                     ),
                     const SizedBox(height: 16),
                     _SectionHeader(label: 'has_pool'.tr()),
@@ -349,18 +360,22 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                           ),
                           Switch(
                             value: _hasPool,
-                            onChanged: (val) => setState(() => _hasPool = val),
+                            onChanged: (val) {
+                              setState(() => _hasPool = val);
+                            },
                           ),
                         ],
                       ),
                     ),
                     const SizedBox(height: 24),
                     PrimaryButton(
+                      key: filterApplyButtonKey,
                       label: 'apply_filters'.tr(),
                       onPressed: isApplyEnabled ? _onApply : null,
                     ),
                     const SizedBox(height: 8),
                     TextButton(
+                      key: filterClearButtonKey,
                       onPressed: _onClear,
                       child: Text('clear_filters'.tr()),
                     ),

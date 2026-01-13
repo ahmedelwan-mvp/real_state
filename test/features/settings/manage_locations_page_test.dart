@@ -1,14 +1,13 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:real_state/features/location/data/repositories/location_repository.dart';
+import 'package:real_state/features/location/domain/repositories/location_repository.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
 import 'package:real_state/features/settings/presentation/pages/manage_locations_page.dart';
 
-class FakeLocationRepository extends LocationRepository {
-  FakeLocationRepository() : super(FirebaseFirestore.instance);
+class FakeLocationRepository implements LocationRepository {
+  FakeLocationRepository();
   List<LocationArea> locations = [];
   @override
   Future<List<LocationArea>> fetchAll() async => locations;

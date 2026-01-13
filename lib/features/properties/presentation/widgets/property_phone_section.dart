@@ -16,6 +16,16 @@ class PropertyPhoneSection extends StatelessWidget {
     this.onRequestAccess,
   });
 
+  static const ValueKey<String> hiddenPhoneKey = ValueKey(
+    'property_phone_hidden_card',
+  );
+  static const ValueKey<String> hiddenPhoneLabelKey = ValueKey(
+    'property_phone_hidden',
+  );
+  static const ValueKey<String> requestButtonKey = ValueKey(
+    'property_phone_request_button',
+  );
+
   @override
   Widget build(BuildContext context) {
     final phoneNumber = phoneText;
@@ -52,6 +62,7 @@ class PropertyPhoneSection extends StatelessWidget {
     }
 
     return Card(
+      key: hiddenPhoneKey,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -62,11 +73,13 @@ class PropertyPhoneSection extends StatelessWidget {
             Expanded(
               child: Text(
                 'phone_hidden'.tr(),
+                key: hiddenPhoneLabelKey,
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),
             if (onRequestAccess != null)
               PrimaryButton(
+                key: requestButtonKey,
                 label: 'request_phone_access'.tr(),
                 expand: false,
                 onPressed: onRequestAccess,

@@ -47,7 +47,9 @@ class PropertyCard extends StatelessWidget {
         : colorScheme.outlineVariant.withValues(alpha: 0.4);
     return Card(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(radius),
+      ),
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
@@ -62,13 +64,22 @@ class PropertyCard extends StatelessWidget {
               ),
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final imageWidth = (constraints.maxWidth * 0.35).clamp(120.0, 170.0);
+                  final imageWidth = (constraints.maxWidth * 0.35).clamp(
+                    120.0,
+                    170.0,
+                  );
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        SizedBox(width: imageWidth, child: _buildImage(context, radius - 4)),
+                        SizedBox(
+                          width: imageWidth,
+                          child: _buildImage(context, radius - 4),
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Column(
@@ -102,7 +113,9 @@ class PropertyCard extends StatelessWidget {
                 child: Icon(
                   selected ? Icons.check : Icons.radio_button_unchecked,
                   size: 18,
-                  color: selected ? colorScheme.onPrimary : colorScheme.onSurfaceVariant,
+                  color: selected
+                      ? colorScheme.onPrimary
+                      : colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
@@ -129,7 +142,9 @@ class PropertyCard extends StatelessWidget {
       color: Theme.of(context).colorScheme.onPrimary,
       fontWeight: FontWeight.w700,
     );
-    final lockColor = Theme.of(context).colorScheme.surface.withValues(alpha: 0.72);
+    final lockColor = Theme.of(
+      context,
+    ).colorScheme.surface.withValues(alpha: 0.72);
 
     if (!allowImages) {
       return _imagePlaceholder(context, radius);
@@ -141,7 +156,9 @@ class PropertyCard extends StatelessWidget {
         children: [
           AspectRatio(aspectRatio: 2.1 / 2.3, child: _coverImage()),
           Positioned.fill(
-            child: DecoratedBox(decoration: BoxDecoration(gradient: overlayGradient)),
+            child: DecoratedBox(
+              decoration: BoxDecoration(gradient: overlayGradient),
+            ),
           ),
           Positioned(
             left: 12,
@@ -150,14 +167,18 @@ class PropertyCard extends StatelessWidget {
               children: [
                 AppBadge(
                   label: 'purpose.${property.purpose.name}'.tr().toUpperCase(),
-                  backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.9),
+                  backgroundColor: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.9),
                   textStyle: badgeTextStyle,
                 ),
                 if (_isNew) ...[
                   const SizedBox(width: 8),
                   AppBadge(
                     label: 'new'.tr(),
-                    backgroundColor: Theme.of(context).colorScheme.secondary.withValues(alpha: 0.9),
+                    backgroundColor: Theme.of(
+                      context,
+                    ).colorScheme.secondary.withValues(alpha: 0.9),
                     textStyle: badgeTextStyle,
                   ),
                 ],
@@ -180,7 +201,9 @@ class PropertyCard extends StatelessWidget {
               left: 10,
               child: AppBadge(
                 label: 'broker_label'.tr(),
-                backgroundColor: Theme.of(context).colorScheme.surface.withValues(alpha: 0.72),
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.surface.withValues(alpha: 0.72),
                 textStyle: Theme.of(
                   context,
                 ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w700),
@@ -193,7 +216,8 @@ class PropertyCard extends StatelessWidget {
 
   Widget _coverImage() {
     final cover =
-        property.coverImageUrl ?? (property.imageUrls.isNotEmpty ? property.imageUrls[0] : '');
+        property.coverImageUrl ??
+        (property.imageUrls.isNotEmpty ? property.imageUrls[0] : '');
     if (cover.isEmpty) {
       return Container(
         color: Colors.grey.shade200,
@@ -210,7 +234,9 @@ class PropertyCard extends StatelessWidget {
         aspectRatio: 2.1 / 2.3,
         child: Container(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          child: const Center(child: Icon(Icons.image_not_supported_outlined, size: 36)),
+          child: const Center(
+            child: Icon(Icons.image_not_supported_outlined, size: 36),
+          ),
         ),
       ),
     );
@@ -239,7 +265,11 @@ class PropertyCard extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.schedule, size: 1, color: colorScheme.onPrimaryContainer),
+              Icon(
+                Icons.schedule,
+                size: 1,
+                color: colorScheme.onPrimaryContainer,
+              ),
               const SizedBox(width: 4),
               Text(
                 _timeAgo(property.createdAt),
@@ -275,16 +305,23 @@ class PropertyCard extends StatelessWidget {
                 areaName.isNotEmpty ? areaName : 'area_unavailable'.tr(),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: textTheme.bodySmall?.copyWith(color: colorScheme.onSurfaceVariant),
+                style: textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           ],
         ),
-        if (property.creatorName != null && property.creatorName!.isNotEmpty) ...[
+        if (property.creatorName != null &&
+            property.creatorName!.isNotEmpty) ...[
           const SizedBox(height: 4),
           Row(
             children: [
-              Icon(Icons.person_outline, size: 16, color: colorScheme.secondary),
+              Icon(
+                Icons.person_outline,
+                size: 16,
+                color: colorScheme.secondary,
+              ),
               const SizedBox(width: 4),
               Expanded(
                 child: Text(
@@ -307,13 +344,22 @@ class PropertyCard extends StatelessWidget {
   Widget _buildMetaRow(TextTheme textTheme, ColorScheme colorScheme) {
     final items = <Widget>[];
     if (property.rooms != null) {
-      items.add(_MetaItem(icon: Icons.king_bed_outlined, label: '${property.rooms}'));
+      items.add(
+        _MetaItem(icon: Icons.king_bed_outlined, label: '${property.rooms}'),
+      );
     }
     if (property.kitchens != null) {
-      items.add(_MetaItem(icon: Icons.restaurant_outlined, label: '${property.kitchens}'));
+      items.add(
+        _MetaItem(
+          icon: Icons.restaurant_outlined,
+          label: '${property.kitchens}',
+        ),
+      );
     }
     if (property.floors != null) {
-      items.add(_MetaItem(icon: Icons.layers_outlined, label: '${property.floors}'));
+      items.add(
+        _MetaItem(icon: Icons.layers_outlined, label: '${property.floors}'),
+      );
     }
     if (property.hasPool) {
       items.add(
@@ -371,7 +417,12 @@ class _MetaItem extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: colorScheme.primary),
           const SizedBox(width: 6),
-          Text(label, style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

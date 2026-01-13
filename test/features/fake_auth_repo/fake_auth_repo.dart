@@ -10,7 +10,8 @@ class FakeAuthRepo implements AuthRepositoryDomain {
   FakeAuthRepo(this._user);
 
   @override
-  Future<UserEntity> signInWithEmail(String email, String password) => throw UnimplementedError();
+  Future<UserEntity> signInWithEmail(String email, String password) =>
+      throw UnimplementedError();
 
   @override
   Future<void> signOut() => throw UnimplementedError();

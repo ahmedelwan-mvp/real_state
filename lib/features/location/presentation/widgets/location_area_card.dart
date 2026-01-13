@@ -23,7 +23,9 @@ class LocationAreaCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final localized = area.localizedName(localeCode: localeCode);
-    final displayName = localized.isNotEmpty ? localized : 'placeholder_dash'.tr();
+    final displayName = localized.isNotEmpty
+        ? localized
+        : 'placeholder_dash'.tr();
     final secondary = localeCode.startsWith('ar') ? area.nameEn : area.nameAr;
     return Card(
       elevation: 0,
@@ -53,11 +55,15 @@ class LocationAreaCard extends StatelessWidget {
                       displayName,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      secondary.isNotEmpty ? secondary : 'placeholder_dash'.tr(),
+                      secondary.isNotEmpty
+                          ? secondary
+                          : 'placeholder_dash'.tr(),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(
@@ -110,7 +116,9 @@ class LocationAreaImage extends StatelessWidget {
       child: Icon(
         Icons.image_not_supported_outlined,
         size: 40,
-        color: Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
+        color: Theme.of(
+          context,
+        ).colorScheme.onSurfaceVariant.withValues(alpha: 0.6),
       ),
     );
   }

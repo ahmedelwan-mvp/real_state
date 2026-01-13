@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:real_state/features/models/entities/access_request.dart';
+import 'package:real_state/features/properties/presentation/share/property_share_state.dart';
 
 abstract class PropertyDetailEvent extends Equatable {
   const PropertyDetailEvent();
@@ -90,4 +91,12 @@ class PropertyAccessRequestUpdated extends PropertyDetailEvent {
 
   @override
   List<Object?> get props => [type, request];
+}
+
+class PropertyShareStateChanged extends PropertyDetailEvent {
+  final PropertyShareState shareState;
+  const PropertyShareStateChanged(this.shareState);
+
+  @override
+  List<Object?> get props => [shareState];
 }

@@ -2,7 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:real_state/core/components/app_network_image.dart';
 
-import '../models/property_editor_models.dart';
+import 'package:real_state/features/properties/models/property_editor_models.dart';
 
 class PropertyImagesEditor extends StatelessWidget {
   final List<EditableImage> images;
@@ -63,8 +63,9 @@ class PropertyImagesEditor extends StatelessWidget {
                         child: Container(
                           width: 140,
                           height: 120,
-                          color:
-                              Theme.of(context).colorScheme.surfaceContainerHighest,
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
                           child: _buildImageContent(context, img),
                         ),
                       ),

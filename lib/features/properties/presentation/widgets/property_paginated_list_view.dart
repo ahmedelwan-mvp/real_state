@@ -73,7 +73,9 @@ class PropertyPaginatedListView extends StatelessWidget {
       );
     }
 
-    final displayItems = isLoading && items.isEmpty ? placeholderProperties() : items;
+    final displayItems = isLoading && items.isEmpty
+        ? placeholderProperties()
+        : items;
 
     return SmartRefresher(
       controller: refreshController,
@@ -86,14 +88,19 @@ class PropertyPaginatedListView extends StatelessWidget {
         child: selectionController != null
             ? ValueListenableBuilder<Set<String>>(
                 valueListenable: selectionController!.selectedIds,
-                builder: (_, __, ___) => _buildListView(context, displayItems, isLoading),
+                builder: (_, __, ___) =>
+                    _buildListView(context, displayItems, isLoading),
               )
             : _buildListView(context, displayItems, isLoading),
       ),
     );
   }
 
-  Widget _buildListView(BuildContext context, List<Property> displayItems, bool isLoading) {
+  Widget _buildListView(
+    BuildContext context,
+    List<Property> displayItems,
+    bool isLoading,
+  ) {
     return ListView.separated(
       padding: padding,
       itemCount: displayItems.length,
@@ -103,13 +110,18 @@ class PropertyPaginatedListView extends StatelessWidget {
         final resolvedAreaName = _resolveAreaName(context, property);
 
         if (property.id.isEmpty && isLoading) {
-          return PropertyListItem(property: property, areaName: resolvedAreaName);
+          return PropertyListItem(
+            property: property,
+            areaName: resolvedAreaName,
+          );
         }
 
-        final controllerIsActive = selectionController?.isSelectionActive ?? false;
+        final controllerIsActive =
+            selectionController?.isSelectionActive ?? false;
         final effectiveSelectionMode = controllerIsActive || selectionMode;
         final isSelected =
-            selectionController?.isSelected(property.id) ?? selectedIds.contains(property.id);
+            selectionController?.isSelected(property.id) ??
+            selectedIds.contains(property.id);
         void handleSelection() {
           if (selectionController != null) {
             selectionController!.toggle(property.id);

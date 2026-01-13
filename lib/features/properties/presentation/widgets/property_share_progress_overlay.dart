@@ -6,10 +6,7 @@ import '../../domain/models/property_share_progress.dart';
 class PropertyShareProgressOverlay extends StatelessWidget {
   final PropertyShareProgress progress;
 
-  const PropertyShareProgressOverlay({
-    super.key,
-    required this.progress,
-  });
+  const PropertyShareProgressOverlay({super.key, required this.progress});
 
   @override
   Widget build(BuildContext context) {
@@ -20,25 +17,27 @@ class PropertyShareProgressOverlay extends StatelessWidget {
 
     return Stack(
       children: [
-        const ModalBarrier(
-          color: Colors.black54,
-          dismissible: false,
-        ),
+        const ModalBarrier(color: Colors.black54, dismissible: false),
         Positioned.fill(
           child: Center(
             child: Card(
               elevation: 18,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 32,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
                       'share_progress_title'.tr(),
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                     const SizedBox(height: 16),
                     LinearProgressIndicator(
@@ -92,7 +91,7 @@ class PropertyShareProgressOverlayController {
   OverlayEntry? _entry;
 
   PropertyShareProgressOverlayController(PropertyShareProgress initialProgress)
-      : _notifier = ValueNotifier(initialProgress);
+    : _notifier = ValueNotifier(initialProgress);
 
   void show(BuildContext context) {
     if (_entry != null) return;
@@ -100,7 +99,8 @@ class PropertyShareProgressOverlayController {
     _entry = OverlayEntry(
       builder: (context) => ValueListenableBuilder<PropertyShareProgress>(
         valueListenable: _notifier,
-        builder: (context, progress, _) => PropertyShareProgressOverlay(progress: progress),
+        builder: (context, progress, _) =>
+            PropertyShareProgressOverlay(progress: progress),
       ),
     );
     overlay.insert(_entry!);

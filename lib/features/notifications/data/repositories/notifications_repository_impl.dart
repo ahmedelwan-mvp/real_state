@@ -5,7 +5,7 @@ import 'package:real_state/core/constants/app_collections.dart';
 import 'package:real_state/features/models/entities/access_request.dart';
 import 'package:real_state/features/models/entities/property.dart';
 import 'package:real_state/features/notifications/data/dtos/app_notification_dto.dart';
-import 'package:real_state/features/notifications/data/services/fcm_service.dart';
+import 'package:real_state/features/notifications/domain/services/notification_delivery_service.dart';
 import 'package:real_state/features/notifications/domain/entities/app_notification.dart';
 import 'package:real_state/features/notifications/domain/entities/notifications_page.dart';
 import 'package:real_state/features/notifications/domain/repositories/notifications_repository.dart';
@@ -13,29 +13,37 @@ import 'package:real_state/features/notifications/domain/usecases/resolve_proper
 
 class NotificationsRepositoryImpl implements NotificationsRepository {
   final FirebaseFirestore _firestore;
-  final FcmService _fcmService;
+  final NotificationDeliveryService _notificationDelivery;
   final ResolvePropertyAddedTargetsUseCase _resolveTargets;
 
-  NotificationsRepositoryImpl(this._firestore, this._fcmService, this._resolveTargets);
+  NotificationsRepositoryImpl(
+    this._firestore,
+    this._notificationDelivery,
+    this._resolveTargets,
+  );
 
   @override
   Future<NotificationsPage> fetchPage({
     required String userId,
-    DocumentSnapshot<Map<String, dynamic>>? startAfter,
+    Object? startAfter,
     int limit = 20,
   }) async {
+    DocumentSnapshot<Map<String, dynamic>>? startAfterDoc;
+    if (startAfter is DocumentSnapshot<Map<String, dynamic>>) {
+      startAfterDoc = startAfter;
+    }
     try {
       Query<Map<String, dynamic>> q = AppNotificationDto.collection(_firestore)
           .where('targetUserId', isEqualTo: userId)
           .orderBy('createdAt', descending: true)
           .limit(limit);
 
-      if (startAfter != null) {
-        q = q.startAfterDocument(startAfter);
+      if (startAfterDoc != null) {
+        q = q.startAfterDocument(startAfterDoc);
       }
 
       debugPrint(
-        '[NotificationsRepository] fetchPage user=$userId limit=$limit startAfter=${startAfter?.id}',
+        '[NotificationsRepository] fetchPage user=$userId limit=$limit startAfter=${startAfterDoc?.id}',
       );
 
       final snap = await q.get();
@@ -47,18 +55,25 @@ class NotificationsRepositoryImpl implements NotificationsRepository {
         hasMore: snap.docs.length == limit,
       );
     } catch (e, st) {
-      debugPrint('[NotificationsRepository] fetchPage failed for user=$userId: $e\n$st');
+      debugPrint(
+        '[NotificationsRepository] fetchPage failed for user=$userId: $e\n$st',
+      );
       rethrow;
     }
   }
 
   @override
   Future<void> markAsRead(String notificationId) {
-    return AppNotificationDto.collection(_firestore).doc(notificationId).update({'isRead': true});
+    return AppNotificationDto.collection(
+      _firestore,
+    ).doc(notificationId).update({'isRead': true});
   }
 
   @override
-  Future<void> sendPropertyAdded({required Property property, required String brief}) async {
+  Future<void> sendPropertyAdded({
+    required Property property,
+    required String brief,
+  }) async {
     final recipients = await _resolveTargets(property);
     final title = property.title?.isNotEmpty == true
         ? property.title!
@@ -119,7 +134,9 @@ class NotificationsRepositoryImpl implements NotificationsRepository {
     required AccessRequest request,
     required bool accepted,
   }) async {
-    final status = accepted ? AccessRequestStatus.accepted : AccessRequestStatus.rejected;
+    final status = accepted
+        ? AccessRequestStatus.accepted
+        : AccessRequestStatus.rejected;
     await _updateOwnerNotificationStatus(request.id, status);
 
     final notification = AppNotification(
@@ -169,8 +186,10 @@ class NotificationsRepositoryImpl implements NotificationsRepository {
     await doc.set(AppNotificationDto.toMap(notification));
     final targetUserId = notification.targetUserId;
     if (targetUserId == null || targetUserId.isEmpty) return;
-    final tokens = await _fcmService.fetchTokensForUsers([targetUserId]);
-    await _fcmService.sendToTokens(
+    final tokens = await _notificationDelivery.fetchTokensForUsers([
+      targetUserId,
+    ]);
+    await _notificationDelivery.sendNotificationToTokens(
       tokens: tokens,
       title: notification.title,
       body: notification.body,
@@ -186,17 +205,22 @@ class NotificationsRepositoryImpl implements NotificationsRepository {
       'body': notification.body,
       'createdAt': notification.createdAt.toIso8601String(),
     };
-    if (notification.propertyId != null) map['propertyId'] = notification.propertyId!;
-    if (notification.requesterId != null) map['requesterId'] = notification.requesterId!;
-    if (notification.requestId != null) map['requestId'] = notification.requestId!;
-    if (notification.requestType != null) map['requestType'] = notification.requestType!.name;
+    if (notification.propertyId != null)
+      map['propertyId'] = notification.propertyId!;
+    if (notification.requesterId != null)
+      map['requesterId'] = notification.requesterId!;
+    if (notification.requestId != null)
+      map['requestId'] = notification.requestId!;
+    if (notification.requestType != null)
+      map['requestType'] = notification.requestType!.name;
     if (notification.requestStatus != null) {
       map['requestStatus'] = notification.requestStatus!.name;
     }
     if (notification.requestMessage != null) {
       map['requestMessage'] = notification.requestMessage!;
     }
-    if (notification.targetUserId != null) map['targetUserId'] = notification.targetUserId!;
+    if (notification.targetUserId != null)
+      map['targetUserId'] = notification.targetUserId!;
     return map;
   }
 
@@ -211,7 +235,10 @@ class NotificationsRepositoryImpl implements NotificationsRepository {
     return ids;
   }
 
-  Future<void> _updateOwnerNotificationStatus(String requestId, AccessRequestStatus status) async {
+  Future<void> _updateOwnerNotificationStatus(
+    String requestId,
+    AccessRequestStatus status,
+  ) async {
     try {
       final q = await AppNotificationDto.collection(_firestore)
           .where('requestId', isEqualTo: requestId)

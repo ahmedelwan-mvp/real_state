@@ -13,8 +13,9 @@ class PropertyDto {
         (s == 'rent') ? PropertyPurpose.rent : PropertyPurpose.sale;
     PropertyStatus statusFrom(String? s) =>
         (s == 'archived') ? PropertyStatus.archived : PropertyStatus.active;
-    PropertyOwnerScope ownerScopeFrom(String? s) =>
-        (s == 'broker') ? PropertyOwnerScope.broker : PropertyOwnerScope.company;
+    PropertyOwnerScope ownerScopeFrom(String? s) => (s == 'broker')
+        ? PropertyOwnerScope.broker
+        : PropertyOwnerScope.company;
 
     return Property(
       id: doc.id,
@@ -27,16 +28,21 @@ class PropertyDto {
           (data['rooms'] is double ? (data['rooms'] as double).toInt() : null),
       kitchens:
           (data['kitchens'] as int?) ??
-          (data['kitchens'] is double ? (data['kitchens'] as double).toInt() : null),
+          (data['kitchens'] is double
+              ? (data['kitchens'] as double).toInt()
+              : null),
       floors:
           (data['floors'] as int?) ??
-          (data['floors'] is double ? (data['floors'] as double).toInt() : null),
+          (data['floors'] is double
+              ? (data['floors'] as double).toInt()
+              : null),
       hasPool: (data['hasPool'] as bool?) ?? false,
       locationAreaId: data['locationAreaId'] as String?,
       locationUrl: data['locationUrl'] as String?,
       coverImageUrl: data['coverImageUrl'] as String?,
       imageUrls: List<String>.from((data['imageUrls'] as List?) ?? const []),
-      ownerPhoneEncryptedOrHiddenStored: data['ownerPhoneEncryptedOrHiddenStored'] as String?,
+      ownerPhoneEncryptedOrHiddenStored:
+          data['ownerPhoneEncryptedOrHiddenStored'] as String?,
       isImagesHidden: (data['isImagesHidden'] as bool?) ?? false,
       status: statusFrom(data['status'] as String?),
       isDeleted: (data['isDeleted'] as bool?) ?? false,

@@ -13,7 +13,8 @@ class AuthRepositoryImpl implements AuthRepositoryDomain, CurrentUserAccessor {
   final AuthRemoteDataSource remote;
   final FcmService? _fcmService;
 
-  AuthRepositoryImpl(this.remote, {FcmService? fcmService}) : _fcmService = fcmService;
+  AuthRepositoryImpl(this.remote, {FcmService? fcmService})
+    : _fcmService = fcmService;
 
   @override
   Future<UserEntity> signInWithEmail(String email, String password) async {
@@ -34,7 +35,12 @@ class AuthRepositoryImpl implements AuthRepositoryDomain, CurrentUserAccessor {
     required String name,
     required UserRole role,
   }) async {
-    final user = await remote.signUp(email: email, password: password, name: name, role: role);
+    final user = await remote.signUp(
+      email: email,
+      password: password,
+      name: name,
+      role: role,
+    );
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('user_token', user.id);
     await prefs.setString('user_role', roleToString(user.role));
@@ -49,7 +55,9 @@ class AuthRepositoryImpl implements AuthRepositoryDomain, CurrentUserAccessor {
     try {
       await _fcmService?.detachUser();
     } catch (e, st) {
-      debugPrint('FCM detach failed during signOut: ${mapExceptionToFailure(e, st)}');
+      debugPrint(
+        'FCM detach failed during signOut: ${mapExceptionToFailure(e, st)}',
+      );
     }
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('user_token');

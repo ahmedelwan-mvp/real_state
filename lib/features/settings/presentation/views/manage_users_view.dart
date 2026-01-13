@@ -21,10 +21,7 @@ import 'package:real_state/features/users/domain/entities/managed_user.dart';
 import 'package:real_state/features/users/domain/repositories/user_management_repository.dart';
 
 class ManageUsersView extends StatefulWidget {
-  const ManageUsersView({
-    super.key,
-    required this.flow,
-  });
+  const ManageUsersView({super.key, required this.flow});
 
   final ManageUsersFlow flow;
 
@@ -39,6 +36,8 @@ class _ManageUsersViewState extends State<ManageUsersView>
   bool _initialized = false;
   bool _loadingRole = true;
   bool _isOwner = false;
+  static const collectorsTabKey = ValueKey('manage_users_tab_collectors');
+  static const brokersTabKey = ValueKey('manage_users_tab_brokers');
 
   @override
   void initState() {
@@ -55,7 +54,7 @@ class _ManageUsersViewState extends State<ManageUsersView>
 
   Future<void> _loadRole() async {
     final auth = context.read<AuthRepositoryDomain>();
-    final user = await auth.userChanges.first;
+    final user = auth.currentUser ?? await auth.userChanges.first;
     setState(() {
       _isOwner = user?.role == UserRole.owner;
       _loadingRole = false;
@@ -95,9 +94,17 @@ class _ManageUsersViewState extends State<ManageUsersView>
       child: BlocConsumer<ManageUsersCubit, ManageUsersState>(
         listener: (context, state) {
           if (state is ManageUsersFailure) {
-            AppSnackbar.show(context, state.message, type: AppSnackbarType.error);
+            AppSnackbar.show(
+              context,
+              state.message,
+              type: AppSnackbarType.error,
+            );
           } else if (state is ManageUsersPartialFailure) {
-            AppSnackbar.show(context, state.message, type: AppSnackbarType.error);
+            AppSnackbar.show(
+              context,
+              state.message,
+              type: AppSnackbarType.error,
+            );
           } else if (state is ManageUsersLoadSuccess) {
             context.read<BrokersListBloc>().add(const BrokersListRefreshed());
           }
@@ -143,13 +150,15 @@ class _ManageUsersViewState extends State<ManageUsersView>
                 : null,
             body: AnimatedPadding(
               duration: const Duration(milliseconds: 200),
-              padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
+              ),
               child: Column(
                 children: [
                   TabBar(
                     tabs: [
-                      Tab(text: 'collectors'.tr()),
-                      Tab(text: 'brokers'.tr()),
+                      Tab(key: collectorsTabKey, text: 'collectors'.tr()),
+                      Tab(key: brokersTabKey, text: 'brokers'.tr()),
                     ],
                     onTap: (i) => setState(() => _tabIndex = i),
                     controller: _tabController,
@@ -160,12 +169,14 @@ class _ManageUsersViewState extends State<ManageUsersView>
                       child: displayList.isEmpty
                           ? EmptyStateWidget(
                               description: 'no_users_description'.tr(),
-                              action: () => context.read<ManageUsersCubit>().load(),
+                              action: () =>
+                                  context.read<ManageUsersCubit>().load(),
                             )
                           : ListView.separated(
                               padding: const EdgeInsets.all(12),
                               itemCount: displayList.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 8),
+                              separatorBuilder: (_, __) =>
+                                  const SizedBox(height: 8),
                               itemBuilder: (c, i) {
                                 final user = displayList[i];
                                 final canInteract = !showSkeleton;
@@ -174,14 +185,19 @@ class _ManageUsersViewState extends State<ManageUsersView>
                                   child: UserListItem(
                                     user: user,
                                     onEdit: canInteract
-                                        ? () => widget.flow.openEditUserSheetOrDialog(
-                                              context,
-                                              user,
-                                              canAssignOwner: _isOwner,
-                                            )
+                                        ? () => widget.flow
+                                              .openEditUserSheetOrDialog(
+                                                context,
+                                                user,
+                                                canAssignOwner: _isOwner,
+                                              )
                                         : () {},
                                     onDelete: canInteract
-                                        ? () => widget.flow.confirmAndDeleteUser(context, user)
+                                        ? () =>
+                                              widget.flow.confirmAndDeleteUser(
+                                                context,
+                                                user,
+                                              )
                                         : () {},
                                   ),
                                 );
@@ -212,8 +228,11 @@ class _ManageUsersViewState extends State<ManageUsersView>
         Expanded(
           child: AppSkeletonList(
             itemCount: placeholders.length,
-            itemBuilder: (_, i) =>
-                UserListItem(user: placeholders[i], onEdit: () {}, onDelete: () {}),
+            itemBuilder: (_, i) => UserListItem(
+              user: placeholders[i],
+              onEdit: () {},
+              onDelete: () {},
+            ),
           ),
         ),
       ],

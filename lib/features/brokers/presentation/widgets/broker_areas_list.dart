@@ -23,24 +23,30 @@ class BrokerAreasList extends StatelessWidget {
         if (state is BrokerAreasInitial) {
           context.read<BrokerAreasBloc>().add(BrokerAreasRequested(brokerId));
         }
-        final isLoading = state is BrokerAreasInitial || state is BrokerAreasLoadInProgress;
+        final isLoading =
+            state is BrokerAreasInitial || state is BrokerAreasLoadInProgress;
         if (isLoading) {
           return AppSkeletonList(
             itemCount: 6,
-            itemBuilder: (_, __) => _AreaCard(name: 'loading_area'.tr(), propertyCount: 0),
+            itemBuilder: (_, __) =>
+                _AreaCard(name: 'loading_area'.tr(), propertyCount: 0),
           );
         }
         if (state is BrokerAreasFailure) {
           return Center(
             child: AppErrorView(
               message: state.message,
-              onRetry: () => context.read<BrokerAreasBloc>().add(BrokerAreasRequested(brokerId)),
+              onRetry: () => context.read<BrokerAreasBloc>().add(
+                BrokerAreasRequested(brokerId),
+              ),
             ),
           );
         }
         if (state is BrokerAreasLoadSuccess) {
           if (state.areas.isEmpty) {
-            return EmptyStateWidget(description: 'no_locations_description'.tr());
+            return EmptyStateWidget(
+              description: 'no_locations_description'.tr(),
+            );
           }
           return ListView.separated(
             padding: const EdgeInsets.all(12),
@@ -52,7 +58,10 @@ class BrokerAreasList extends StatelessWidget {
                 onTap: () {
                   context.push(
                     '/broker/$brokerId/area/${area.id}',
-                    extra: {'areaName': area.name, 'brokerName': brokerName ?? ''},
+                    extra: {
+                      'areaName': area.name,
+                      'brokerName': brokerName ?? '',
+                    },
                   );
                 },
               );
@@ -72,14 +81,23 @@ class _AreaCard extends StatelessWidget {
   final int propertyCount;
   final VoidCallback? onTap;
 
-  const _AreaCard({required this.name, required this.propertyCount, this.onTap});
+  const _AreaCard({
+    required this.name,
+    required this.propertyCount,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return InfoCard(
       title: name.isNotEmpty ? name : 'area_unavailable'.tr(),
-      subtitle: 'broker_areas_properties_count'.tr(args: [propertyCount.toString()]),
-      icon: Icon(Icons.place_outlined, color: Theme.of(context).colorScheme.primary),
+      subtitle: 'broker_areas_properties_count'.tr(
+        args: [propertyCount.toString()],
+      ),
+      icon: Icon(
+        Icons.place_outlined,
+        color: Theme.of(context).colorScheme.primary,
+      ),
       onTap: onTap,
     );
   }

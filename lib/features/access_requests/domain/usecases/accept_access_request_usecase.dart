@@ -1,6 +1,6 @@
 import 'package:real_state/core/constants/user_role.dart';
 import 'package:real_state/core/errors/localized_exception.dart';
-import 'package:real_state/features/access_requests/data/repositories/access_requests_repository.dart';
+import 'package:real_state/features/access_requests/domain/repositories/access_requests_repository.dart';
 import 'package:real_state/features/models/entities/access_request.dart';
 import 'package:real_state/features/properties/domain/property_permissions.dart';
 

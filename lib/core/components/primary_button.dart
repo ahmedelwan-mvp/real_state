@@ -42,21 +42,26 @@ class PrimaryButton extends StatelessWidget {
             )
           : Text(
               label,
-              style: Theme.of(
-                context,
-              ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600, color: Colors.white),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: Colors.white,
+              ),
             ),
       onPressed: isLoading ? null : onPressed,
       style:
           ElevatedButton.styleFrom(
             padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(radius)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(radius),
+            ),
             elevation: 3,
             shadowColor: Colors.black.withValues(alpha: 0.15),
             backgroundColor: Colors.transparent,
             foregroundColor: Colors.white,
           ).copyWith(
-            overlayColor: WidgetStateProperty.all(Colors.white.withValues(alpha: 0.1)),
+            overlayColor: WidgetStateProperty.all(
+              Colors.white.withValues(alpha: 0.1),
+            ),
             elevation: WidgetStateProperty.resolveWith(
               (states) => states.contains(WidgetState.pressed) ? 1.5 : 3,
             ),
@@ -64,14 +69,19 @@ class PrimaryButton extends StatelessWidget {
     );
 
     final decorated = Ink(
-      decoration: BoxDecoration(gradient: gradient, borderRadius: BorderRadius.circular(radius)),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(radius),
+      ),
       child: btn,
     );
 
     return AnimatedScale(
       scale: isLoading ? 1.0 : 1.0,
       duration: const Duration(milliseconds: 120),
-      child: expand ? SizedBox(width: double.infinity, child: decorated) : decorated,
+      child: expand
+          ? SizedBox(width: double.infinity, child: decorated)
+          : decorated,
     );
   }
 }

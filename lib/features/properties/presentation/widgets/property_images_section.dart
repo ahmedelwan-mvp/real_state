@@ -5,6 +5,16 @@ import 'package:real_state/core/components/primary_button.dart';
 import 'package:real_state/features/models/entities/property.dart';
 
 class PropertyImagesSection extends StatelessWidget {
+  static const ValueKey<String> hiddenImagesKey = ValueKey(
+    'property_images_hidden_card',
+  );
+  static const ValueKey<String> hiddenImagesLabelKey = ValueKey(
+    'property_images_hidden',
+  );
+  static const ValueKey<String> requestAccessButtonKey = ValueKey(
+    'property_images_request_button',
+  );
+
   final Property property;
   final bool imagesVisible;
   final ScrollController scrollController;
@@ -47,9 +57,8 @@ class PropertyImagesSection extends StatelessWidget {
     }
 
     if (!imagesVisible) {
-      // Do not instantiate any image widgets when visibility is denied to avoid
-      // accidental leaks via caches or shared widgets.
       return Card(
+        key: hiddenImagesKey,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
@@ -60,11 +69,13 @@ class PropertyImagesSection extends StatelessWidget {
               const SizedBox(height: 8),
               Text(
                 'images_hidden'.tr(),
+                key: hiddenImagesLabelKey,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               if (onRequestAccess != null) ...[
                 const SizedBox(height: 12),
                 PrimaryButton(
+                  key: requestAccessButtonKey,
                   label: 'request_images_access'.tr(),
                   onPressed: onRequestAccess,
                 ),

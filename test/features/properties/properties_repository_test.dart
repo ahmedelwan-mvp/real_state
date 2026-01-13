@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart';
 
 void main() {
   group('PropertiesRepository.requiresPriceOrder', () {

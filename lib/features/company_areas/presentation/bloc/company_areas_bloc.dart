@@ -16,17 +16,22 @@ class CompanyAreasBloc extends Bloc<CompanyAreasEvent, CompanyAreasState> {
   final PropertyMutationsBloc _mutations;
   late final StreamSubscription<PropertyMutation> _mutationSub;
 
-  CompanyAreasBloc(this._useCase, this._mutations) : super(const CompanyAreasInitial()) {
+  CompanyAreasBloc(this._useCase, this._mutations)
+    : super(const CompanyAreasInitial()) {
     on<CompanyAreasRequested>(_onRequested);
 
     _mutationSub = _mutations.mutationStream.listen((event) {
-      if (event.ownerScope == null || event.ownerScope == PropertyOwnerScope.company) {
+      if (event.ownerScope == null ||
+          event.ownerScope == PropertyOwnerScope.company) {
         add(const CompanyAreasRequested());
       }
     });
   }
 
-  Future<void> _onRequested(CompanyAreasRequested event, Emitter<CompanyAreasState> emit) async {
+  Future<void> _onRequested(
+    CompanyAreasRequested event,
+    Emitter<CompanyAreasState> emit,
+  ) async {
     final currentAreas = state is CompanyAreasLoadSuccess
         ? (state as CompanyAreasLoadSuccess).areas
         : (state is CompanyAreasLoadInProgress

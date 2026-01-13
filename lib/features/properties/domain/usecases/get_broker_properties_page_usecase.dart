@@ -2,9 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:real_state/core/constants/user_role.dart';
 import 'package:real_state/core/errors/localized_exception.dart';
 import 'package:real_state/features/auth/domain/repositories/auth_repository_domain.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
 import 'package:real_state/features/models/entities/property.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart';
 
 /// Retrieves a paginated page of properties for a specific broker scope.
 class GetBrokerPropertiesPageUseCase {

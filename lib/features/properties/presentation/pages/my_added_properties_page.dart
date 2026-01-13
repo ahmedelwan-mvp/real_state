@@ -8,10 +8,10 @@ import 'package:real_state/features/properties/presentation/selection/property_s
 import 'package:real_state/features/properties/presentation/selection/property_selection_policy.dart';
 import 'package:real_state/features/properties/presentation/selection/selection_app_bar.dart';
 import 'package:real_state/features/auth/domain/repositories/auth_repository_domain.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
 import 'package:real_state/features/models/entities/property.dart';
-import 'package:real_state/features/properties/data/datasources/location_area_remote_datasource.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
+import 'package:real_state/features/location/domain/repositories/location_areas_repository.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart';
 import 'package:real_state/features/properties/presentation/bloc/properties_bloc.dart';
 import 'package:real_state/features/properties/presentation/bloc/properties_event.dart';
 import 'package:real_state/features/properties/presentation/bloc/properties_state.dart';
@@ -45,7 +45,7 @@ class _MyAddedPropertiesPageState extends State<MyAddedPropertiesPage> {
 
     _bloc = PropertiesBloc(
       context.read<PropertiesRepository>(),
-      context.read<LocationAreaRemoteDataSource>(),
+      context.read<LocationAreasRepository>(),
       context.read<PropertyMutationsBloc>(),
     )..add(PropertiesStarted(filter: filter));
   }
@@ -72,7 +72,9 @@ class _MyAddedPropertiesPageState extends State<MyAddedPropertiesPage> {
 
   Future<void> _shareSelected() async {
     final selectedIds = _selectionController.selectedIds.value;
-    final props = _currentItems.where((p) => selectedIds.contains(p.id)).toList();
+    final props = _currentItems
+        .where((p) => selectedIds.contains(p.id))
+        .toList();
     if (props.isEmpty) return;
     await shareMultiplePropertyPdfs(context: context, properties: props);
     _clearSelection();
@@ -86,10 +88,10 @@ class _MyAddedPropertiesPageState extends State<MyAddedPropertiesPage> {
         appBar: _selectionMode
             ? SelectionAppBar(
                 selectedCount: _selectionController.selectedCount,
-                policy: const PropertySelectionPolicy(actions: [PropertyBulkAction.share]),
-                actionCallbacks: {
-                  PropertyBulkAction.share: _shareSelected,
-                },
+                policy: const PropertySelectionPolicy(
+                  actions: [PropertyBulkAction.share],
+                ),
+                actionCallbacks: {PropertyBulkAction.share: _shareSelected},
                 onClearSelection: _clearSelection,
               )
             : CustomAppBar(title: 'my_added_properties'.tr()),
@@ -98,7 +100,9 @@ class _MyAddedPropertiesPageState extends State<MyAddedPropertiesPage> {
             listener: (context, state) {
               if (state is PropertiesLoaded) {
                 _refreshController.refreshCompleted();
-                state.hasMore ? _refreshController.loadComplete() : _refreshController.loadNoData();
+                state.hasMore
+                    ? _refreshController.loadComplete()
+                    : _refreshController.loadNoData();
               } else if (state is PropertiesFailure) {
                 _refreshController.refreshFailed();
                 _refreshController.loadFailed();
@@ -112,8 +116,11 @@ class _MyAddedPropertiesPageState extends State<MyAddedPropertiesPage> {
             builder: (context, state) {
               final loaded = (state is PropertiesLoaded)
                   ? state
-                  : (state is PropertiesActionInProgress ? state.previous : null);
-              final isInitialLoading = state is PropertiesInitial || state is PropertiesLoading;
+                  : (state is PropertiesActionInProgress
+                        ? state.previous
+                        : null);
+              final isInitialLoading =
+                  state is PropertiesInitial || state is PropertiesLoading;
 
               final items = (loaded?.items ?? const []);
               if (!isInitialLoading) {
@@ -132,7 +139,8 @@ class _MyAddedPropertiesPageState extends State<MyAddedPropertiesPage> {
                   _clearSelection();
                   _bloc.add(const PropertiesRefreshed());
                 },
-                onLoadMore: () => _bloc.add(const PropertiesLoadMoreRequested()),
+                onLoadMore: () =>
+                    _bloc.add(const PropertiesLoadMoreRequested()),
                 onRetry: () => _bloc.add(const PropertiesRetryRequested()),
                 selectionController: _selectionController,
                 emptyMessage: 'no_my_added_properties'.tr(),

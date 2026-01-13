@@ -42,7 +42,9 @@ class UsersRemoteDataSource {
     final trimmedEmail = email.trim();
     final trimmedName = name.trim();
     final trimmedJobTitle = jobTitle?.trim();
-    final jobTitleValue = (trimmedJobTitle?.isNotEmpty == true) ? trimmedJobTitle : null;
+    final jobTitleValue = (trimmedJobTitle?.isNotEmpty == true)
+        ? trimmedJobTitle
+        : null;
     try {
       final credential = await secondaryAuth.createUserWithEmailAndPassword(
         email: trimmedEmail,

@@ -1,31 +1,30 @@
 import 'dart:async';
 
 import 'package:bloc/bloc.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/foundation.dart';
 import 'package:real_state/core/handle_errors/error_mapper.dart';
-import 'package:real_state/core/utils/price_formatter.dart';
 import 'package:real_state/features/auth/domain/entities/user_entity.dart';
 import 'package:real_state/features/auth/domain/repositories/auth_repository_domain.dart';
 import 'package:real_state/features/models/entities/access_request.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
 import 'package:real_state/features/models/entities/property.dart';
-import 'package:real_state/features/notifications/data/services/fcm_service.dart';
 import 'package:real_state/core/constants/ui_constants.dart';
 import 'package:real_state/features/notifications/domain/entities/app_notification.dart';
 import 'package:real_state/features/notifications/domain/repositories/notifications_repository.dart';
 import 'package:real_state/features/notifications/presentation/bloc/notifications_event.dart';
 import 'package:real_state/features/notifications/presentation/bloc/notifications_state.dart';
-import 'package:real_state/features/notifications/presentation/models/notification_property_summary.dart';
-import 'package:real_state/features/properties/data/datasources/location_area_remote_datasource.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
+import 'package:real_state/features/notifications/domain/models/notification_property_summary.dart';
+import 'package:real_state/features/location/domain/repositories/location_areas_repository.dart';
+import 'package:real_state/features/notifications/domain/services/notification_messaging_service.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart';
 import 'package:real_state/features/access_requests/domain/usecases/accept_access_request_usecase.dart';
 import 'package:real_state/features/access_requests/domain/usecases/reject_access_request_usecase.dart';
 import 'package:real_state/features/properties/domain/property_permissions.dart'
     as perms;
 
 import '../../../../core/constants/user_role.dart';
+import '../models/notification_action_status.dart';
 
 /// NotificationsBloc orchestrates notification list + actions without
 /// ever dropping back to a loading skeleton once data is shown.
@@ -35,20 +34,21 @@ import '../../../../core/constants/user_role.dart';
 class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   final NotificationsRepository _notificationsRepo;
   final AuthRepositoryDomain _auth;
-  final FcmService _fcm;
+  final NotificationMessagingService _messaging;
   final PropertiesRepository _propertiesRepo;
-  final LocationAreaRemoteDataSource _locations;
+  final LocationAreasRepository _locationAreas;
   final AcceptAccessRequestUseCase _acceptAccessRequestUseCase;
   final RejectAccessRequestUseCase _rejectAccessRequestUseCase;
 
   StreamSubscription<UserEntity?>? _authSub;
-  StreamSubscription<AppNotification>? _fcmSub;
+  StreamSubscription<AppNotification>? _messagingSub;
   String? _currentUserId;
   UserRole? _currentRole;
   bool _isOwner = false;
   bool _isCollector = false;
   final Map<String, NotificationPropertySummary> _propertyCache = {};
   final Set<String> _pendingRequestIds = {};
+  final Map<String, NotificationActionStatus> _actionStatuses = {};
   bool _isLoadingMore = false;
   bool _hasLoadedOnce = false;
 
@@ -60,9 +60,9 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   NotificationsBloc(
     this._notificationsRepo,
     this._auth,
-    this._fcm,
+    this._messaging,
     this._propertiesRepo,
-    this._locations,
+    this._locationAreas,
     this._acceptAccessRequestUseCase,
     this._rejectAccessRequestUseCase,
   ) : super(const NotificationsInitial()) {
@@ -96,7 +96,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
         add(const NotificationsStarted());
       }
     });
-    _fcmSub = _fcm.foregroundNotifications.listen((n) {
+    _messagingSub = _messaging.foregroundNotifications.listen((n) {
       if (_currentUserId != null) {
         add(NotificationsIncomingPushed(n, _currentUserId!));
       }
@@ -106,7 +106,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
   @override
   Future<void> close() {
     _authSub?.cancel();
-    _fcmSub?.cancel();
+    _messagingSub?.cancel();
     return super.close();
   }
 
@@ -231,6 +231,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
           isCollector: _isCollector,
           propertySummaries: resolution.summaries,
           pendingRequestIds: _pendingSnapshot(),
+          actionStatuses: _actionStatusSnapshot(),
           message: mapErrorMessage(e),
           infoMessage: null,
         ),
@@ -306,6 +307,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
           isCollector: _isCollector,
           propertySummaries: current.propertySummaries,
           pendingRequestIds: _pendingSnapshot(),
+          actionStatuses: _actionStatusSnapshot(),
         ),
       );
     }
@@ -328,6 +330,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
           isCollector: _isCollector,
           propertySummaries: current.propertySummaries,
           pendingRequestIds: _pendingSnapshot(),
+          actionStatuses: _actionStatusSnapshot(),
           message: message,
         ),
       );
@@ -378,7 +381,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
         .toList();
     Map<String, LocationArea> areaNames = {};
     try {
-      areaNames = await _locations.fetchNamesByIds(areaIds);
+      areaNames = await _locationAreas.fetchNamesByIds(areaIds);
     } catch (e, st) {
       debugPrint('[NotificationsBloc] Failed to fetch location names: $e\n$st');
       firstError ??= mapErrorMessage(e, stackTrace: st);
@@ -400,9 +403,6 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
               (prop.imageUrls.isNotEmpty ? prop.imageUrls.first : null),
           isMissing: false,
           price: prop.price,
-          formattedPrice: prop.price != null
-              ? PriceFormatter.format(prop.price!, currency: 'AED')
-              : null,
         );
       }
     });
@@ -415,11 +415,13 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
 
   NotificationsDataState _resolutionState({
     required List<AppNotification> items,
-    required DocumentSnapshot<Map<String, dynamic>>? lastDoc,
+    required Object? lastDoc,
     required bool hasMore,
     required _PropertyResolutionResult resolution,
     String? infoMessage,
+    Map<String, NotificationActionStatus>? actionStatuses,
   }) {
+    final statuses = actionStatuses ?? _actionStatusSnapshot();
     if (resolution.errorMessage != null) {
       return NotificationsPartialFailure(
         items: items,
@@ -429,6 +431,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
         isCollector: _isCollector,
         propertySummaries: resolution.summaries,
         pendingRequestIds: _pendingSnapshot(),
+        actionStatuses: statuses,
         message: resolution.errorMessage!,
         infoMessage: infoMessage,
       );
@@ -441,6 +444,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
       isCollector: _isCollector,
       propertySummaries: resolution.summaries,
       pendingRequestIds: _pendingSnapshot(),
+      actionStatuses: statuses,
       infoMessage: infoMessage,
     );
   }
@@ -449,6 +453,20 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
       _pendingRequestIds.contains(requestId);
 
   Set<String> _pendingSnapshot() => Set<String>.from(_pendingRequestIds);
+
+  Map<String, NotificationActionStatus> _actionStatusSnapshot() =>
+      Map<String, NotificationActionStatus>.from(_actionStatuses);
+
+  void _setActionStatus(
+    String notificationId,
+    NotificationActionStatus status,
+  ) {
+    if (status == NotificationActionStatus.idle) {
+      _actionStatuses.remove(notificationId);
+    } else {
+      _actionStatuses[notificationId] = status;
+    }
+  }
 
   AppNotification? _findNotification(NotificationsDataState state, String id) {
     for (final n in state.items) {
@@ -488,6 +506,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
       return;
     }
     _setRequestPending(event.requestId, true);
+    _setActionStatus(event.notificationId, NotificationActionStatus.accepting);
     emit(_actionInProgressFrom(current));
     try {
       final updated = await _acceptAccessRequestUseCase(
@@ -506,10 +525,12 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
         current,
       );
       _setRequestPending(event.requestId, false);
+      _setActionStatus(event.notificationId, NotificationActionStatus.idle);
       _emitSuccessFrom(loaded, emit);
       event.completer?.complete(null);
     } catch (e) {
       _setRequestPending(event.requestId, false);
+      _setActionStatus(event.notificationId, NotificationActionStatus.idle);
       final message = mapErrorMessage(e);
       emit(_actionFailureFrom(current, message));
       event.completer?.complete(message);
@@ -545,6 +566,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
       return;
     }
     _setRequestPending(event.requestId, true);
+    _setActionStatus(event.notificationId, NotificationActionStatus.rejecting);
     emit(_actionInProgressFrom(current));
     try {
       final updated = await _rejectAccessRequestUseCase(
@@ -563,10 +585,12 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
         current,
       );
       _setRequestPending(event.requestId, false);
+      _setActionStatus(event.notificationId, NotificationActionStatus.idle);
       _emitSuccessFrom(loaded, emit);
       event.completer?.complete(null);
     } catch (e) {
       _setRequestPending(event.requestId, false);
+      _setActionStatus(event.notificationId, NotificationActionStatus.idle);
       final message = mapErrorMessage(e);
       emit(_actionFailureFrom(current, message));
       event.completer?.complete(message);
@@ -595,6 +619,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
         isCollector: _isCollector,
         propertySummaries: current.propertySummaries,
         pendingRequestIds: _pendingSnapshot(),
+        actionStatuses: _actionStatusSnapshot(),
         infoMessage: current.infoMessage,
       );
       _emitSuccessFrom(loaded, emit);
@@ -624,6 +649,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
       isCollector: _isCollector,
       propertySummaries: current.propertySummaries,
       pendingRequestIds: _pendingSnapshot(),
+      actionStatuses: _actionStatusSnapshot(),
       infoMessage: current.infoMessage,
     );
   }
@@ -649,6 +675,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
       isCollector: _isCollector,
       propertySummaries: current.propertySummaries,
       pendingRequestIds: _pendingSnapshot(),
+      actionStatuses: _actionStatusSnapshot(),
       infoMessage: current.infoMessage,
     );
   }
@@ -665,6 +692,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
       isCollector: _isCollector,
       propertySummaries: current.propertySummaries,
       pendingRequestIds: _pendingSnapshot(),
+      actionStatuses: _actionStatusSnapshot(),
       message: message,
       infoMessage: current.infoMessage,
     );
@@ -684,6 +712,7 @@ class NotificationsBloc extends Bloc<NotificationsEvent, NotificationsState> {
         isCollector: loaded.isCollector,
         propertySummaries: loaded.propertySummaries,
         pendingRequestIds: loaded.pendingRequestIds,
+        actionStatuses: _actionStatusSnapshot(),
         infoMessage: loaded.infoMessage,
       ),
     );

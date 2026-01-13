@@ -1,11 +1,11 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
 import 'package:real_state/features/models/entities/property.dart';
-import 'package:real_state/features/properties/data/datasources/location_area_remote_datasource.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
+import 'package:real_state/features/location/domain/repositories/location_areas_repository.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart';
 import 'package:real_state/features/properties/domain/property_owner_scope.dart';
 import 'package:real_state/features/properties/presentation/bloc/properties_bloc.dart';
 import 'package:real_state/features/properties/presentation/bloc/properties_event.dart';
@@ -15,12 +15,12 @@ import 'package:real_state/features/properties/presentation/bloc/property_mutati
 
 class MockPropertiesRepository extends Mock implements PropertiesRepository {}
 
-class MockLocationAreaRemoteDataSource extends Mock
-    implements LocationAreaRemoteDataSource {}
+class MockLocationAreasRepository extends Mock
+    implements LocationAreasRepository {}
 
 void main() {
   late MockPropertiesRepository repo;
-  late MockLocationAreaRemoteDataSource areaDs;
+  late MockLocationAreasRepository areaRepo;
   late PropertyMutationsBloc mutations;
   const filter = PropertyFilter.empty;
   final now = DateTime(2024);
@@ -37,13 +37,13 @@ void main() {
   );
 
   LocationArea _area(String id, String name) => LocationArea(
-        id: id,
-        nameAr: name,
-        nameEn: name,
-        imageUrl: '',
-        isActive: true,
-        createdAt: now,
-      );
+    id: id,
+    nameAr: name,
+    nameEn: name,
+    imageUrl: '',
+    isActive: true,
+    createdAt: now,
+  );
 
   PageResult<Property> _page(
     List<Property> items, {
@@ -59,11 +59,9 @@ void main() {
 
   setUp(() {
     repo = MockPropertiesRepository();
-    areaDs = MockLocationAreaRemoteDataSource();
+    areaRepo = MockLocationAreasRepository();
     mutations = PropertyMutationsBloc();
-    when(
-      () => areaDs.fetchNamesByIds(any()),
-    ).thenAnswer(
+    when(() => areaRepo.fetchNamesByIds(any())).thenAnswer(
       (_) async => {'a1': _area('a1', 'Area 1'), 'a2': _area('a2', 'Area 2')},
     );
   });
@@ -82,7 +80,7 @@ void main() {
           startAfter: any(named: 'startAfter'),
         ),
       ).thenAnswer((_) async => _page([_prop('p1')], hasMore: true));
-      return PropertiesBloc(repo, areaDs, mutations);
+      return PropertiesBloc(repo, areaRepo, mutations);
     },
     act: (bloc) => bloc.add(const PropertiesStarted(filter: filter)),
     expect: () => [
@@ -105,7 +103,7 @@ void main() {
           startAfter: any(named: 'startAfter'),
         ),
       ).thenThrow(Exception('boom'));
-      return PropertiesBloc(repo, areaDs, mutations);
+      return PropertiesBloc(repo, areaRepo, mutations);
     },
     act: (bloc) => bloc.add(const PropertiesStarted(filter: filter)),
     expect: () => [isA<PropertiesLoading>(), isA<PropertiesFailure>()],
@@ -127,7 +125,7 @@ void main() {
             ? _page([_prop('p1')], hasMore: true)
             : _page([_prop('p2', area: 'a2')], hasMore: false);
       });
-      return PropertiesBloc(repo, areaDs, mutations);
+      return PropertiesBloc(repo, areaRepo, mutations);
     },
     act: (bloc) async {
       bloc.add(const PropertiesStarted(filter: filter));
@@ -162,7 +160,7 @@ void main() {
             ? _page([_prop('p1')], hasMore: true)
             : _page([_prop('p2')], hasMore: false);
       });
-      return PropertiesBloc(repo, areaDs, mutations);
+      return PropertiesBloc(repo, areaRepo, mutations);
     },
     act: (bloc) async {
       bloc.add(const PropertiesStarted(filter: filter));
@@ -182,7 +180,7 @@ void main() {
 
   blocTest<PropertiesBloc, PropertiesState>(
     'load more ignored when hasMore is false',
-    build: () => PropertiesBloc(repo, areaDs, mutations),
+    build: () => PropertiesBloc(repo, areaRepo, mutations),
     seed: () => PropertiesLoaded(
       items: [_prop('p1')],
       lastDoc: null,
@@ -209,7 +207,7 @@ void main() {
             ? _page([_prop('p1')], hasMore: true)
             : _page([_prop('p1'), _prop('p3', area: 'a2')], hasMore: false);
       });
-      return PropertiesBloc(repo, areaDs, mutations);
+      return PropertiesBloc(repo, areaRepo, mutations);
     },
     act: (bloc) async {
       bloc.add(const PropertiesStarted(filter: filter));

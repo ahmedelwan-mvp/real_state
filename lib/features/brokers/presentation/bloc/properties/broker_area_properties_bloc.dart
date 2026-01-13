@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:real_state/core/handle_errors/error_mapper.dart';
 import 'package:real_state/core/utils/single_flight_guard.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
 import 'package:real_state/core/constants/ui_constants.dart';
 import 'package:real_state/features/properties/domain/property_owner_scope.dart';
 import 'package:real_state/features/properties/domain/usecases/get_broker_properties_page_usecase.dart';
@@ -57,10 +57,9 @@ class BrokerAreaPropertiesBloc
     Emitter<BrokerAreaPropertiesState> emit,
   ) async {
     _brokerId = event.brokerId;
-    _filter =
-        (event.filter ?? const PropertyFilter()).copyWith(
-          locationAreaId: event.areaId,
-        );
+    _filter = (event.filter ?? const PropertyFilter()).copyWith(
+      locationAreaId: event.areaId,
+    );
     await _guarded(() => _load(emit, reset: true));
   }
 
@@ -69,8 +68,7 @@ class BrokerAreaPropertiesBloc
     Emitter<BrokerAreaPropertiesState> emit,
   ) async {
     _brokerId = event.brokerId;
-    _filter =
-        (event.filter ?? _filter).copyWith(locationAreaId: event.areaId);
+    _filter = (event.filter ?? _filter).copyWith(locationAreaId: event.areaId);
     await _guarded(() => _load(emit, reset: true));
   }
 
@@ -78,9 +76,7 @@ class BrokerAreaPropertiesBloc
     BrokerAreaPropertiesFilterChanged event,
     Emitter<BrokerAreaPropertiesState> emit,
   ) async {
-    _filter = event.filter.copyWith(
-      locationAreaId: _filter.locationAreaId,
-    );
+    _filter = event.filter.copyWith(locationAreaId: _filter.locationAreaId);
     await _guarded(() => _load(emit, reset: true));
   }
 
@@ -94,14 +90,23 @@ class BrokerAreaPropertiesBloc
       return;
     }
     if (current is BrokerAreaPropertiesLoadSuccess && !current.hasMore) return;
-    if (current is BrokerAreaPropertiesLoadMoreInProgress && !current.hasMore) return;
+    if (current is BrokerAreaPropertiesLoadMoreInProgress && !current.hasMore)
+      return;
     if (_requestGuard.isBusy || _isLoadingMore) return;
     await _guarded(() async {
       _isLoadingMore = true;
-      final items = current is BrokerAreaPropertiesLoadSuccess ? current.items : (current as BrokerAreaPropertiesLoadMoreInProgress).items;
-      final lastDoc = current is BrokerAreaPropertiesLoadSuccess ? current.lastDoc : (current as BrokerAreaPropertiesLoadMoreInProgress).lastDoc;
-      final hasMore = current is BrokerAreaPropertiesLoadSuccess ? current.hasMore : (current as BrokerAreaPropertiesLoadMoreInProgress).hasMore;
-      final filter = current is BrokerAreaPropertiesLoadSuccess ? current.filter : (current as BrokerAreaPropertiesLoadMoreInProgress).filter;
+      final items = current is BrokerAreaPropertiesLoadSuccess
+          ? current.items
+          : (current as BrokerAreaPropertiesLoadMoreInProgress).items;
+      final lastDoc = current is BrokerAreaPropertiesLoadSuccess
+          ? current.lastDoc
+          : (current as BrokerAreaPropertiesLoadMoreInProgress).lastDoc;
+      final hasMore = current is BrokerAreaPropertiesLoadSuccess
+          ? current.hasMore
+          : (current as BrokerAreaPropertiesLoadMoreInProgress).hasMore;
+      final filter = current is BrokerAreaPropertiesLoadSuccess
+          ? current.filter
+          : (current as BrokerAreaPropertiesLoadMoreInProgress).filter;
 
       emit(
         BrokerAreaPropertiesLoadMoreInProgress(
@@ -175,7 +180,8 @@ class BrokerAreaPropertiesBloc
     }
   }
 
-  Future<bool> _guarded(Future<void> Function() action) => _requestGuard.run(action);
+  Future<bool> _guarded(Future<void> Function() action) =>
+      _requestGuard.run(action);
 
   @override
   Future<void> close() async {

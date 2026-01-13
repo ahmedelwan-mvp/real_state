@@ -32,7 +32,9 @@ class InfoCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 4),
@@ -49,13 +51,20 @@ class InfoCard extends StatelessWidget {
             if (trailing != null)
               trailing!
             else if (onTap != null)
-              Icon(Icons.chevron_right, color: theme.colorScheme.onSurfaceVariant),
+              Icon(
+                Icons.chevron_right,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
           ],
         ),
       ),
     );
 
     if (onTap == null) return card;
-    return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(12), child: card);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: card,
+    );
   }
 }

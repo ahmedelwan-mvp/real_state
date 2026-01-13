@@ -77,7 +77,7 @@ void main() {
     expect(
       canModifyProperty(
         property: lockedCompany,
-        userId: 'owner1',
+        userId: 'collector1',
         role: UserRole.collector,
       ),
       false,
@@ -85,7 +85,7 @@ void main() {
     expect(
       canModifyProperty(
         property: lockedCompany,
-        userId: 'owner1',
+        userId: 'broker1',
         role: UserRole.broker,
       ),
       false,

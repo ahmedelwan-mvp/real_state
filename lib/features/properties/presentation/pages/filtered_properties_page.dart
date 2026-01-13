@@ -9,15 +9,15 @@ import 'package:real_state/core/components/base_gradient_page.dart';
 import 'package:real_state/core/components/custom_app_bar.dart';
 import 'package:real_state/features/properties/presentation/selection/property_selection_policy.dart';
 import 'package:real_state/features/properties/presentation/selection/selection_app_bar.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
 import 'package:real_state/features/models/entities/property.dart';
-import 'package:real_state/features/properties/data/datasources/location_area_remote_datasource.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
+import 'package:real_state/features/location/domain/repositories/location_areas_repository.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart';
 import 'package:real_state/features/properties/presentation/bloc/properties_bloc.dart';
 import 'package:real_state/features/properties/presentation/bloc/properties_event.dart';
 import 'package:real_state/features/properties/presentation/bloc/properties_state.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_bloc.dart';
-import 'package:real_state/features/properties/presentation/controllers/property_filter_controller.dart';
+import 'package:real_state/features/properties/domain/services/property_filter_controller.dart';
 import 'package:real_state/features/properties/presentation/utils/multi_pdf_share.dart';
 import 'package:real_state/features/properties/presentation/utils/property_placeholders.dart';
 import 'package:real_state/features/properties/presentation/widgets/property_paginated_list_view.dart';
@@ -44,7 +44,7 @@ class _FilteredPropertiesPageState extends State<FilteredPropertiesPage> {
     _filterController = PropertyFilterController(initial: widget.filter);
     _bloc = PropertiesBloc(
       context.read<PropertiesRepository>(),
-      context.read<LocationAreaRemoteDataSource>(),
+      context.read<LocationAreasRepository>(),
       context.read<PropertyMutationsBloc>(),
     )..add(PropertiesStarted(filter: widget.filter));
   }
@@ -87,22 +87,29 @@ class _FilteredPropertiesPageState extends State<FilteredPropertiesPage> {
         appBar: _selectionMode
             ? SelectionAppBar(
                 selectedCount: _selected.length,
-                policy: const PropertySelectionPolicy(actions: [PropertyBulkAction.share]),
-                actionCallbacks: {
-                  PropertyBulkAction.share: _shareSelected,
-                },
+                policy: const PropertySelectionPolicy(
+                  actions: [PropertyBulkAction.share],
+                ),
+                actionCallbacks: {PropertyBulkAction.share: _shareSelected},
                 onClearSelection: _clearSelection,
               )
             : CustomAppBar(
                 title: 'filtered_properties'.tr(),
-                actions: [TextButton(onPressed: () => context.pop(), child: Text('clear'.tr()))],
+                actions: [
+                  TextButton(
+                    onPressed: () => context.pop(),
+                    child: Text('clear'.tr()),
+                  ),
+                ],
               ),
         body: BaseGradientPage(
           child: BlocConsumer<PropertiesBloc, PropertiesState>(
             listener: (context, state) {
               if (state is PropertiesLoaded) {
                 _refreshController.refreshCompleted();
-                state.hasMore ? _refreshController.loadComplete() : _refreshController.loadNoData();
+                state.hasMore
+                    ? _refreshController.loadComplete()
+                    : _refreshController.loadNoData();
               } else if (state is PropertiesFailure) {
                 _refreshController.refreshFailed();
                 _refreshController.loadFailed();
@@ -111,17 +118,23 @@ class _FilteredPropertiesPageState extends State<FilteredPropertiesPage> {
                 state.previous.hasMore
                     ? _refreshController.loadComplete()
                     : _refreshController.loadNoData();
-                AppSnackbar.show(context, state.message, type: AppSnackbarType.error);
+                AppSnackbar.show(
+                  context,
+                  state.message,
+                  type: AppSnackbarType.error,
+                );
               }
             },
             builder: (context, state) {
               final loaded = _loadedFrom(state);
-              final isInitialLoading = state is PropertiesInitial || state is PropertiesLoading;
+              final isInitialLoading =
+                  state is PropertiesInitial || state is PropertiesLoading;
               if (state is PropertiesFailure) {
                 return AppErrorView(
                   message: state.message,
-                  onRetry: () =>
-                      context.read<PropertiesBloc>().add(const PropertiesRetryRequested()),
+                  onRetry: () => context.read<PropertiesBloc>().add(
+                    const PropertiesRetryRequested(),
+                  ),
                 );
               }
 
@@ -140,11 +153,16 @@ class _FilteredPropertiesPageState extends State<FilteredPropertiesPage> {
                 hasMore: loaded?.hasMore ?? false,
                 areaNames: areaNames,
                 onRefresh: () => context.read<PropertiesBloc>().add(
-                  PropertiesRefreshed(filter: loaded?.filter ?? _filterController.filter),
+                  PropertiesRefreshed(
+                    filter: loaded?.filter ?? _filterController.filter,
+                  ),
                 ),
-                onLoadMore: () =>
-                    context.read<PropertiesBloc>().add(const PropertiesLoadMoreRequested()),
-                onRetry: () => context.read<PropertiesBloc>().add(const PropertiesRetryRequested()),
+                onLoadMore: () => context.read<PropertiesBloc>().add(
+                  const PropertiesLoadMoreRequested(),
+                ),
+                onRetry: () => context.read<PropertiesBloc>().add(
+                  const PropertiesRetryRequested(),
+                ),
                 selectionMode: _selectionMode,
                 selectedIds: _selected,
                 onToggleSelection: _toggleSelection,

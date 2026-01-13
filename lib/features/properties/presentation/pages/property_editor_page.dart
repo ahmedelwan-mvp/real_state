@@ -12,20 +12,21 @@ import 'package:real_state/core/handle_errors/error_mapper.dart';
 import 'package:real_state/core/utils/price_formatter.dart';
 import 'package:real_state/core/validation/validators.dart';
 import 'package:real_state/features/auth/domain/repositories/auth_repository_domain.dart';
-import 'package:real_state/features/location/data/repositories/location_repository.dart';
+import 'package:real_state/features/location/domain/repositories/location_repository.dart';
 import 'package:real_state/features/location/domain/usecases/get_location_areas_usecase.dart';
 import 'package:real_state/features/location/presentation/widgets/location_area_form_dialog.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
 import 'package:real_state/features/models/entities/property.dart';
 import 'package:real_state/features/notifications/domain/repositories/notifications_repository.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart';
 import 'package:real_state/features/properties/domain/property_permissions.dart';
 import 'package:real_state/features/properties/domain/usecases/create_property_usecase.dart';
 import 'package:real_state/features/properties/domain/usecases/update_property_usecase.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_bloc.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_state.dart';
-import 'package:real_state/features/properties/presentation/models/property_editor_models.dart';
-import 'package:real_state/features/properties/presentation/services/property_upload_service.dart';
+import 'package:real_state/features/properties/models/property_editor_models.dart';
+import 'package:real_state/features/properties/domain/usecases/upload_property_images_usecase.dart';
+import 'package:real_state/features/properties/domain/usecases/delete_property_images_usecase.dart';
 import 'package:real_state/features/properties/presentation/widgets/property_editor_form.dart';
 
 part 'property_editor_actions.dart';
@@ -50,8 +51,6 @@ class _PropertyEditorPageState extends State<PropertyEditorPage> {
   final _kitchensCtrl = TextEditingController();
   final _floorsCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
-  final _uploadService = PropertyUploadService();
-
   bool _formattingPrice = false;
   bool _loading = true;
   bool _hasPool = false;
@@ -126,7 +125,11 @@ class _PropertyEditorPageState extends State<PropertyEditorPage> {
         widget.property == null ||
         (widget.property != null &&
             _userId != null &&
-            canModifyProperty(property: widget.property!, userId: _userId!, role: _userRole));
+            canModifyProperty(
+              property: widget.property!,
+              userId: _userId!,
+              role: _userRole,
+            ));
 
     Widget body;
     if (!isLoading && !canCreate && !widget.isEditing) {
@@ -165,7 +168,11 @@ class _PropertyEditorPageState extends State<PropertyEditorPage> {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.isEditing ? 'edit_property'.tr() : 'add_property'.tr())),
+      appBar: AppBar(
+        title: Text(
+          widget.isEditing ? 'edit_property'.tr() : 'add_property'.tr(),
+        ),
+      ),
       body: body,
     );
   }
@@ -191,7 +198,8 @@ class _PropertyEditorPageState extends State<PropertyEditorPage> {
       if (!mounted) return;
       setState(() {
         _locations = latest;
-        if (_locationId != null && !_locations.any((l) => l.id == _locationId)) {
+        if (_locationId != null &&
+            !_locations.any((l) => l.id == _locationId)) {
           _locationId = null;
         }
       });
@@ -223,7 +231,11 @@ class _PropertyEditorPageState extends State<PropertyEditorPage> {
 
       final newId = await LoadingDialog.show(
         context,
-        repo.create(nameAr: res.nameAr, nameEn: res.nameEn, imageFile: res.imageFile!),
+        repo.create(
+          nameAr: res.nameAr,
+          nameEn: res.nameEn,
+          imageFile: res.imageFile!,
+        ),
       );
 
       if (!mounted) return;

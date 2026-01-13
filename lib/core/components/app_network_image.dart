@@ -32,8 +32,9 @@ class AppNetworkImage extends StatelessWidget {
       height: height,
       fit: fit,
       filterQuality: filterQuality,
-      placeholder: (_, __) =>
-          placeholderBuilder != null ? placeholderBuilder!(context) : _placeholder(context),
+      placeholder: (_, __) => placeholderBuilder != null
+          ? placeholderBuilder!(context)
+          : _placeholder(context),
       errorWidget: (_, __, ___) =>
           errorBuilder != null ? errorBuilder!(context) : _error(context),
     );

@@ -10,7 +10,10 @@ class GetBrokerAreasUseCase {
 
   GetBrokerAreasUseCase(this._repository, this._auth);
 
-  Future<List<BrokerArea>> call(String brokerId, {Map<String, String> cachedAreaNames = const {}}) {
+  Future<List<BrokerArea>> call(
+    String brokerId, {
+    Map<String, String> cachedAreaNames = const {},
+  }) {
     return _auth.userChanges.first.then((user) async {
       if (user?.role == UserRole.collector) {
         throw const LocalizedException('access_denied_broker_data');

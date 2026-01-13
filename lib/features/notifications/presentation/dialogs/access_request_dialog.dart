@@ -6,9 +6,10 @@ import 'package:real_state/core/components/loading_dialog.dart';
 import 'package:real_state/core/constants/aed_text.dart';
 import 'package:real_state/core/utils/price_formatter.dart';
 import 'package:real_state/features/notifications/domain/entities/app_notification.dart';
-import 'package:real_state/features/notifications/presentation/cubit/access_request_action_cubit.dart';
-import 'package:real_state/features/notifications/presentation/cubit/access_request_action_state.dart';
-import 'package:real_state/features/notifications/presentation/models/notification_property_summary.dart';
+import 'package:real_state/features/notifications/domain/models/notification_property_summary.dart';
+import 'package:real_state/features/notifications/presentation/bloc/notifications_bloc.dart';
+import 'package:real_state/features/notifications/presentation/bloc/notifications_state.dart';
+import 'package:real_state/features/notifications/presentation/models/notification_action_status.dart';
 import 'package:real_state/features/models/entities/access_request.dart';
 
 class AccessRequestDialog extends StatelessWidget {
@@ -27,17 +28,10 @@ class AccessRequestDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<AccessRequestActionCubit, AccessRequestActionState>(
-      listener: (context, state) async {
-        if (state is AccessRequestActionSuccess) {
-          Navigator.of(context, rootNavigator: true).maybePop();
-          onCompleted?.call();
-        } else if (state is AccessRequestActionFailure) {
-          AppSnackbar.show(context, state.message, type: AppSnackbarType.error);
-        }
-      },
+    return BlocBuilder<NotificationsBloc, NotificationsState>(
       builder: (context, state) {
-        final isBusy = state is AccessRequestActionInProgress;
+        final actionStatus = _actionStatusForNotification(state);
+        final isBusy = actionStatus.isBusy;
         return PopScope(
           canPop: !isBusy,
           child: AlertDialog(
@@ -114,41 +108,11 @@ class AccessRequestDialog extends StatelessWidget {
             ),
             actions: [
               TextButton(
-                onPressed: isBusy
-                    ? null
-                    : () async {
-                        final cubit = context.read<AccessRequestActionCubit>();
-                        final error = await LoadingDialog.show<String?>(
-                          context,
-                          cubit.reject(
-                            notificationId: notification.id,
-                            requestId: notification.requestId!,
-                            targetUserId: notification.targetUserId,
-                          ),
-                        );
-                        if (error != null) {
-                          AppSnackbar.show(context, error, type: AppSnackbarType.error);
-                        }
-                      },
+                onPressed: isBusy ? null : () => _onReject(context),
                 child: Text('reject'.tr()),
               ),
               FilledButton(
-                onPressed: isBusy
-                    ? null
-                    : () async {
-                        final cubit = context.read<AccessRequestActionCubit>();
-                        final error = await LoadingDialog.show<String?>(
-                          context,
-                          cubit.accept(
-                            notificationId: notification.id,
-                            requestId: notification.requestId!,
-                            targetUserId: notification.targetUserId,
-                          ),
-                        );
-                        if (error != null) {
-                          AppSnackbar.show(context, error, type: AppSnackbarType.error);
-                        }
-                      },
+                onPressed: isBusy ? null : () => _onAccept(context),
                 child: Text('accept'.tr()),
               ),
             ],
@@ -156,6 +120,45 @@ class AccessRequestDialog extends StatelessWidget {
         );
       },
     );
+  }
+
+  NotificationActionStatus _actionStatusForNotification(
+    NotificationsState state,
+  ) {
+    if (state is NotificationsDataState) {
+      return state.actionStatuses[notification.id] ??
+          NotificationActionStatus.idle;
+    }
+    return NotificationActionStatus.idle;
+  }
+
+  Future<void> _onAccept(BuildContext context) async {
+    assert(notification.requestId != null);
+    final bloc = context.read<NotificationsBloc>();
+    final error = await LoadingDialog.show<String?>(
+      context,
+      bloc.accept(notification.id, notification.requestId!),
+    );
+    await _handleActionResult(context, error);
+  }
+
+  Future<void> _onReject(BuildContext context) async {
+    assert(notification.requestId != null);
+    final bloc = context.read<NotificationsBloc>();
+    final error = await LoadingDialog.show<String?>(
+      context,
+      bloc.reject(notification.id, notification.requestId!),
+    );
+    await _handleActionResult(context, error);
+  }
+
+  Future<void> _handleActionResult(BuildContext context, String? error) async {
+    if (error != null) {
+      AppSnackbar.show(context, error, type: AppSnackbarType.error);
+      return;
+    }
+    Navigator.of(context, rootNavigator: true).maybePop();
+    onCompleted?.call();
   }
 }
 

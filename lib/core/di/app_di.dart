@@ -6,14 +6,20 @@ import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 import 'package:real_state/core/constants/app_collections.dart';
 
-import '../../features/access_requests/data/repositories/access_requests_repository.dart';
+import '../../features/access_requests/data/repositories/access_requests_repository_impl.dart';
+import '../../features/access_requests/domain/repositories/access_requests_repository.dart';
 import '../../features/auth/data/datasources/auth_remote_datasource.dart';
 import '../../features/auth/data/repositories/auth_repository_impl.dart';
 import '../../core/auth/current_user_accessor.dart';
 import '../../features/auth/domain/repositories/auth_repository_domain.dart';
-import '../../features/location/data/repositories/location_repository.dart';
+import '../../features/location/data/repositories/location_repository_impl.dart';
+import '../../features/location/data/repositories/location_areas_repository_impl.dart';
+import '../../features/location/domain/repositories/location_areas_repository.dart';
+import '../../features/location/domain/repositories/location_repository.dart';
 import '../../features/notifications/data/repositories/notifications_repository_impl.dart';
 import '../../features/notifications/data/services/fcm_service.dart';
+import '../../features/notifications/domain/services/notification_delivery_service.dart';
+import '../../features/notifications/domain/services/notification_messaging_service.dart';
 import '../../features/notifications/domain/repositories/notifications_repository.dart';
 import '../../features/brokers/data/datasources/broker_areas_remote_datasource.dart';
 import '../../features/brokers/data/repositories/broker_areas_repository_impl.dart';
@@ -23,7 +29,10 @@ import '../../features/company_areas/data/repositories/company_areas_repository_
 import '../../features/company_areas/domain/repositories/company_areas_repository.dart';
 import '../../features/company_areas/domain/usecases/get_company_areas_usecase.dart';
 import '../../features/properties/data/datasources/location_area_remote_datasource.dart';
-import '../../features/properties/data/repositories/properties_repository.dart';
+import '../../features/properties/data/repositories/properties_repository_impl.dart';
+import '../../features/properties/data/services/property_upload_service_impl.dart';
+import '../../features/properties/domain/repositories/properties_repository.dart';
+import '../../features/properties/domain/services/property_upload_service.dart';
 import '../../features/properties/domain/usecases/get_broker_properties_page_usecase.dart';
 import '../../features/properties/domain/usecases/get_company_properties_page_usecase.dart';
 import '../../features/properties/domain/usecases/create_property_usecase.dart';
@@ -32,7 +41,11 @@ import '../../features/properties/domain/usecases/archive_property_usecase.dart'
 import '../../features/properties/domain/usecases/delete_property_usecase.dart';
 import '../../features/properties/domain/usecases/restore_property_usecase.dart';
 import '../../features/properties/domain/usecases/share_property_pdf_usecase.dart';
+import '../../features/properties/domain/usecases/upload_property_images_usecase.dart';
+import '../../features/properties/domain/usecases/delete_property_images_usecase.dart';
 import '../../features/properties/presentation/bloc/property_mutations_bloc.dart';
+import '../../features/properties/presentation/mutations/property_mutation_cubit.dart';
+import '../../features/properties/presentation/share/property_share_cubit.dart';
 import '../../features/brokers/data/datasources/brokers_remote_datasource.dart';
 import '../../features/brokers/data/repositories/brokers_repository_impl.dart';
 import '../../features/brokers/domain/repositories/brokers_repository.dart';
@@ -43,10 +56,16 @@ import '../../features/settings/data/repositories/settings_repository_impl.dart'
 import '../../features/settings/domain/repositories/settings_repository.dart';
 import '../../features/location/domain/location_areas_cache.dart';
 import '../../features/location/domain/usecases/get_location_areas_usecase.dart';
+import '../../features/categories/data/repositories/categories_repository_impl.dart';
+import '../../features/categories/domain/repositories/categories_repository.dart';
+import '../../features/categories/domain/usecases/apply_property_filter_usecase.dart';
+import '../../features/categories/domain/usecases/get_categories_usecase.dart';
 import '../../features/users/data/datasources/users_remote_datasource.dart';
 import '../../features/users/data/repositories/user_management_repository_impl.dart';
 import '../../features/users/data/repositories/users_repository.dart';
+import '../../features/users/domain/repositories/users_lookup_repository.dart';
 import '../../features/users/domain/repositories/user_management_repository.dart';
+import '../../features/notifications/domain/usecases/handle_foreground_notification_usecase.dart';
 import '../../features/notifications/domain/usecases/resolve_property_added_targets_usecase.dart';
 import '../../features/access_requests/domain/resolve_access_request_target_usecase.dart';
 import '../../features/access_requests/domain/usecases/create_access_request_usecase.dart';
@@ -71,6 +90,10 @@ class AppDi {
     firestore,
     firebaseAuth,
   );
+  late final NotificationMessagingService notificationMessagingService =
+      fcmService;
+  late final NotificationDeliveryService notificationDeliveryService =
+      fcmService;
 
   // Auth and core dependencies
   late final AuthRemoteDataSource authRemote = _createAuthRemote();
@@ -78,10 +101,10 @@ class AppDi {
   late final CurrentUserAccessor currentUserAccessor = authRepoImpl;
 
   // Feature repositories and services
-  late final PropertiesRepository propertiesRepository = PropertiesRepository(
-    firestore,
-  );
+  late final PropertiesRepository propertiesRepository =
+      PropertiesRepositoryImpl(firestore);
   late final UsersRepository usersRepository = UsersRepository(firestore);
+  late final UsersLookupRepository usersLookupRepository = usersRepository;
   late final UsersRemoteDataSource usersRemoteDataSource =
       UsersRemoteDataSource(
         firestore,
@@ -96,21 +119,36 @@ class AppDi {
     settingsLocalDataSource,
   );
   late final AccessRequestsRepository accessRequestsRepository =
-      AccessRequestsRepository(firestore);
+      AccessRequestsRepositoryImpl(firestore);
   late final LocationAreaRemoteDataSource locationAreaRemoteDataSource =
       LocationAreaRemoteDataSource(firestore);
-  late final LocationRepository locationRepository = LocationRepository(
+  late final LocationAreasRepository locationAreasRepository =
+      LocationAreasRepositoryImpl(locationAreaRemoteDataSource);
+  late final LocationRepository locationRepository = LocationRepositoryImpl(
     firestore,
   );
   late final LocationAreasCache locationAreasCache = LocationAreasCache(
     locationRepository,
-    locationAreaRemoteDataSource,
+    locationAreasRepository,
   );
   late final GetLocationAreasUseCase getLocationAreasUseCase =
       GetLocationAreasUseCase(locationAreasCache);
+  late final CategoriesRepository categoriesRepository =
+      const CategoriesRepositoryImpl();
+  late final GetCategoriesUseCase getCategoriesUseCase = GetCategoriesUseCase(
+    categoriesRepository,
+  );
+  late final ApplyPropertyFilterUseCase applyPropertyFilterUseCase =
+      const ApplyPropertyFilterUseCase();
   late final ResolvePropertyAddedTargetsUseCase
   resolvePropertyAddedTargetsUseCase = ResolvePropertyAddedTargetsUseCase(
-    usersRepository,
+    usersLookupRepository,
+  );
+  late final HandleForegroundNotificationUseCase
+  handleForegroundNotificationUseCase = HandleForegroundNotificationUseCase(
+    propertiesRepository,
+    locationAreasRepository,
+    usersLookupRepository,
   );
   late final NotificationsRepository notificationsRepository =
       NotificationsRepositoryImpl(
@@ -120,7 +158,7 @@ class AppDi {
       );
   late final ResolveAccessRequestTargetUseCase
   resolveAccessRequestTargetUseCase = ResolveAccessRequestTargetUseCase(
-    usersRepository,
+    usersLookupRepository,
   );
   late final CreateAccessRequestUseCase createAccessRequestUseCase =
       CreateAccessRequestUseCase(
@@ -158,6 +196,12 @@ class AppDi {
   late final PropertyShareService propertyShareService = PropertyShareService();
   late final SharePropertyPdfUseCase sharePropertyPdfUseCase =
       SharePropertyPdfUseCase(propertyShareService);
+  late final PropertyUploadService propertyUploadService =
+      PropertyUploadServiceImpl();
+  late final UploadPropertyImagesUseCase uploadPropertyImagesUseCase =
+      UploadPropertyImagesUseCase(propertyUploadService);
+  late final DeletePropertyImagesUseCase deletePropertyImagesUseCase =
+      DeletePropertyImagesUseCase(propertyUploadService);
   late final BrokerAreasRemoteDataSource brokerAreasRemoteDataSource =
       BrokerAreasRemoteDataSource(
         propertiesRepository,
@@ -188,6 +232,7 @@ class AppDi {
       ..._provideNotifications(),
       ..._provideAccessRequests(),
       ..._provideProperties(),
+      ..._provideCategories(),
       ..._provideBrokers(),
       ..._provideCompanyAreas(),
       ..._provideSettings(),
@@ -210,7 +255,12 @@ class AppDi {
   List<SingleChildWidget> _provideCore() {
     return [
       ChangeNotifierProvider<AuthRepository>.value(value: auth),
-      RepositoryProvider<FcmService>.value(value: fcmService),
+      RepositoryProvider<NotificationDeliveryService>.value(
+        value: notificationDeliveryService,
+      ),
+      RepositoryProvider<NotificationMessagingService>.value(
+        value: notificationMessagingService,
+      ),
     ];
   }
 
@@ -218,6 +268,9 @@ class AppDi {
     return [
       RepositoryProvider<AuthRepositoryDomain>.value(value: authRepoImpl),
       RepositoryProvider<CurrentUserAccessor>.value(value: currentUserAccessor),
+      RepositoryProvider<UsersLookupRepository>.value(
+        value: usersLookupRepository,
+      ),
     ];
   }
 
@@ -230,6 +283,9 @@ class AppDi {
       RepositoryProvider<GetLocationAreasUseCase>.value(
         value: getLocationAreasUseCase,
       ),
+      RepositoryProvider<LocationAreasRepository>.value(
+        value: locationAreasRepository,
+      ),
     ];
   }
 
@@ -240,6 +296,9 @@ class AppDi {
       ),
       RepositoryProvider<ResolvePropertyAddedTargetsUseCase>.value(
         value: resolvePropertyAddedTargetsUseCase,
+      ),
+      RepositoryProvider<HandleForegroundNotificationUseCase>.value(
+        value: handleForegroundNotificationUseCase,
       ),
     ];
   }
@@ -272,6 +331,15 @@ class AppDi {
       RepositoryProvider<PropertyShareService>.value(
         value: propertyShareService,
       ),
+      RepositoryProvider<PropertyUploadService>.value(
+        value: propertyUploadService,
+      ),
+      RepositoryProvider<UploadPropertyImagesUseCase>.value(
+        value: uploadPropertyImagesUseCase,
+      ),
+      RepositoryProvider<DeletePropertyImagesUseCase>.value(
+        value: deletePropertyImagesUseCase,
+      ),
       RepositoryProvider<CreatePropertyUseCase>.value(
         value: createPropertyUseCase,
       ),
@@ -299,6 +367,37 @@ class AppDi {
       ),
       RepositoryProvider<GetBrokerPropertiesPageUseCase>.value(
         value: getBrokerPropertiesPageUseCase,
+      ),
+
+      Provider<PropertyMutationCubit Function()>(
+        create: (context) =>
+            () => PropertyMutationCubit(
+              context.read<ArchivePropertyUseCase>(),
+              context.read<DeletePropertyUseCase>(),
+              context.read<RestorePropertyUseCase>(),
+              context.read<PropertyMutationsBloc>(),
+            ),
+      ),
+      Provider<PropertyShareCubit Function()>(
+        create: (context) =>
+            () => PropertyShareCubit(
+              context.read<PropertyShareService>(),
+              context.read<SharePropertyPdfUseCase>(),
+            ),
+      ),
+    ];
+  }
+
+  List<SingleChildWidget> _provideCategories() {
+    return [
+      RepositoryProvider<CategoriesRepository>.value(
+        value: categoriesRepository,
+      ),
+      RepositoryProvider<GetCategoriesUseCase>.value(
+        value: getCategoriesUseCase,
+      ),
+      RepositoryProvider<ApplyPropertyFilterUseCase>.value(
+        value: applyPropertyFilterUseCase,
       ),
     ];
   }

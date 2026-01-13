@@ -1,5 +1,5 @@
 import 'package:real_state/features/notifications/domain/entities/app_notification.dart';
-import 'package:real_state/features/notifications/presentation/models/notification_property_summary.dart';
+import 'package:real_state/features/notifications/domain/models/notification_property_summary.dart';
 
 class NotificationViewModel {
   const NotificationViewModel({

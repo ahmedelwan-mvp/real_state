@@ -24,11 +24,18 @@ class AppBadge extends StatelessWidget {
     final bg = backgroundColor ?? theme.colorScheme.primary;
     final fg = foregroundColor ?? theme.colorScheme.onPrimary;
     final style =
-        textStyle ?? theme.textTheme.labelSmall?.copyWith(color: fg, fontWeight: FontWeight.w700);
+        textStyle ??
+        theme.textTheme.labelSmall?.copyWith(
+          color: fg,
+          fontWeight: FontWeight.w700,
+        );
 
     return Container(
       padding: padding,
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(borderRadius)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
       child: Text(label, style: style),
     );
   }

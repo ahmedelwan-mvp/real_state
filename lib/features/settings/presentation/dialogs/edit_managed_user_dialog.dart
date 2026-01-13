@@ -26,10 +26,12 @@ class EditManagedUserDialog extends StatefulWidget {
 
 class _EditManagedUserDialogState extends State<EditManagedUserDialog> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _nameCtrl =
-      TextEditingController(text: widget.user.name);
-  late final TextEditingController _phoneCtrl =
-      TextEditingController(text: widget.user.phone);
+  late final TextEditingController _nameCtrl = TextEditingController(
+    text: widget.user.name,
+  );
+  late final TextEditingController _phoneCtrl = TextEditingController(
+    text: widget.user.phone,
+  );
   late UserRole _role = widget.user.role;
   late UserRole _previousRole = _role;
 
@@ -74,7 +76,10 @@ class _EditManagedUserDialogState extends State<EditManagedUserDialog> {
     return AlertDialog(
       title: Text('edit_role'.tr(args: [_roleLabel(_role)])),
       content: SingleChildScrollView(
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom * 0.4, top: 8),
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom * 0.4,
+          top: 8,
+        ),
         child: Form(
           key: _formKey,
           autovalidateMode: AutovalidateMode.onUserInteraction,
@@ -88,10 +93,7 @@ class _EditManagedUserDialogState extends State<EditManagedUserDialog> {
                     Validators.isValidName(v) ? null : 'name_too_short'.tr(),
               ),
               const SizedBox(height: 8),
-              AppTextField(
-                label: 'phone'.tr(),
-                controller: _phoneCtrl,
-              ),
+              AppTextField(label: 'phone'.tr(), controller: _phoneCtrl),
               const SizedBox(height: 8),
               DropdownButtonFormField<UserRole>(
                 initialValue: _role,
@@ -137,11 +139,7 @@ class _EditManagedUserDialogState extends State<EditManagedUserDialog> {
           onPressed: () => Navigator.of(context).pop(false),
           child: Text('cancel'.tr()),
         ),
-        PrimaryButton(
-          label: 'save'.tr(),
-          expand: false,
-          onPressed: _save,
-        ),
+        PrimaryButton(label: 'save'.tr(), expand: false, onPressed: _save),
       ],
     );
   }

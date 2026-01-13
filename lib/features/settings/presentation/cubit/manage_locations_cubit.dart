@@ -5,7 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:real_state/core/constants/user_role.dart';
 import 'package:real_state/core/handle_errors/error_mapper.dart';
 import 'package:real_state/features/auth/domain/repositories/auth_repository_domain.dart';
-import 'package:real_state/features/location/data/repositories/location_repository.dart';
+import 'package:real_state/features/location/domain/repositories/location_repository.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
 import 'package:real_state/features/location/domain/usecases/get_location_areas_usecase.dart';
 
@@ -23,9 +23,7 @@ class ManageLocationsCubit extends Cubit<ManageLocationsState> {
   Future<void> initialize() async {
     emit(const ManageLocationsCheckingAccess());
     final user = await _auth.userChanges.first;
-    _canManage =
-        user?.role == UserRole.owner ||
-        user?.role == UserRole.broker;
+    _canManage = user?.role == UserRole.owner || user?.role == UserRole.broker;
     if (!_canManage) {
       emit(ManageLocationsAccessDenied(message: 'access_denied'.tr()));
       return;

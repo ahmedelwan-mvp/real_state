@@ -1,11 +1,10 @@
-import 'dart:async';
-
-import 'package:flutter/material.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:real_state/core/components/app_skeleton_list.dart';
 import 'package:real_state/core/constants/user_role.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:real_state/features/auth/domain/entities/user_entity.dart';
-import 'package:real_state/features/auth/domain/repositories/auth_repository_domain.dart';
 import 'package:real_state/features/brokers/domain/entities/broker.dart';
 import 'package:real_state/features/brokers/domain/repositories/brokers_repository.dart';
 import 'package:real_state/features/brokers/domain/usecases/get_brokers_usecase.dart';
@@ -14,6 +13,9 @@ import 'package:real_state/features/properties/presentation/bloc/property_mutati
 import 'package:real_state/features/settings/presentation/pages/manage_users_page.dart';
 import 'package:real_state/features/users/domain/entities/managed_user.dart';
 import 'package:real_state/features/users/domain/repositories/user_management_repository.dart';
+
+import '../fake_auth_repo/fake_auth_repo.dart';
+import '../../helpers/pump_test_app.dart';
 
 class FakeUserManagementRepository implements UserManagementRepository {
   final List<ManagedUser> collectors = [];
@@ -75,49 +77,17 @@ class FakeUserManagementRepository implements UserManagementRepository {
   }
 }
 
-class FakeAuthRepository implements AuthRepositoryDomain {
-  static const _owner = UserEntity(
-    id: 'owner',
-    email: 'owner@example.com',
-    name: 'Owner',
-    role: UserRole.owner,
-  );
-  final Stream<UserEntity?> _userChanges;
-
-  FakeAuthRepository()
-      : _userChanges = Stream<UserEntity?>.value(_owner).asBroadcastStream();
-
-  @override
-  Future<UserEntity> signInWithEmail(String email, String password) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<UserEntity> signUp({
-    required String email,
-    required String password,
-    required String name,
-    required UserRole role,
-  }) {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> signOut() async {}
-
-  @override
-  Stream<UserEntity?> get userChanges => _userChanges;
-
-  @override
-  UserEntity? get currentUser => _owner;
-}
-
 class FakeBrokersRepository implements BrokersRepository {
   @override
   Future<List<Broker>> fetchBrokers() async => const [];
 }
 
 void main() {
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
+    await EasyLocalization.ensureInitialized();
+  });
+
   testWidgets('ManageUsersPage shows tabs and users', (tester) async {
     final repo = FakeUserManagementRepository();
     repo.collectors.addAll([
@@ -141,27 +111,40 @@ void main() {
     addTearDown(propertyMutationsBloc.close);
     final brokersListBloc = BrokersListBloc(
       GetBrokersUseCase(FakeBrokersRepository()),
-      FakeAuthRepository(),
+      FakeAuthRepo(
+        const UserEntity(
+          id: 'owner',
+          email: 'owner@example.com',
+          name: 'Owner',
+          role: UserRole.owner,
+        ),
+      ),
       propertyMutationsBloc,
     );
     addTearDown(brokersListBloc.close);
 
-    await tester.pumpWidget(
-      MaterialApp(
-        home: RepositoryProvider<UserManagementRepository>.value(
-          value: repo,
-          child: BlocProvider<BrokersListBloc>.value(
-            value: brokersListBloc,
-            child: const ManageUsersPage(),
-          ),
-        ),
-      ),
+    await pumpTestApp(
+      tester,
+      const ManageUsersPage(),
+      additionalProviders: [
+        RepositoryProvider<UserManagementRepository>.value(value: repo),
+        BlocProvider<BrokersListBloc>.value(value: brokersListBloc),
+      ],
     );
-    await tester.pumpAndSettle();
-    expect(find.text('Emp1'), findsOneWidget);
-    expect(find.text('Bro1'), findsNothing);
-    await tester.tap(find.text('Brokers'));
-    await tester.pumpAndSettle();
-    expect(find.text('Bro1'), findsOneWidget);
+
+    final skeletonFinder = find.byType(AppSkeletonList);
+    for (var i = 0; i < 40 && tester.any(skeletonFinder); i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
+
+    final collectorRow = byKeyStr('manage_user_e1');
+    await pumpUntilFound(tester, collectorRow);
+    expect(collectorRow, findsOneWidget);
+    expect(byKeyStr('manage_user_b1'), findsNothing);
+
+    await tester.tap(byKeyStr('manage_users_tab_brokers'));
+    final brokerRow = byKeyStr('manage_user_b1');
+    await pumpUntilFound(tester, brokerRow);
+    expect(brokerRow, findsOneWidget);
   });
 }

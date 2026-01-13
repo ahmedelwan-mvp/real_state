@@ -18,12 +18,20 @@ class AuthRemoteDataSource {
 
   Future<UserModel> signInWithEmail(String email, String password) async {
     try {
-      final credential = await _auth.signInWithEmailAndPassword(email: email, password: password);
+      final credential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
       final user = credential.user;
       if (user == null) throw const UnknownFailure();
 
       final profile = await _fetchProfile(user.uid);
-      return UserModel(id: user.uid, email: user.email, name: profile.$1, role: profile.$2);
+      return UserModel(
+        id: user.uid,
+        email: user.email,
+        name: profile.$1,
+        role: profile.$2,
+      );
     } catch (e, st) {
       if (kDebugMode) debugPrint('signInWithEmail failed: $e\n$st');
       if (e is AuthFailure) rethrow;
@@ -76,7 +84,12 @@ class AuthRemoteDataSource {
       if (u == null) return null;
       try {
         final profile = await _fetchProfile(u.uid);
-        return UserModel(id: u.uid, email: u.email, name: profile.$1, role: profile.$2);
+        return UserModel(
+          id: u.uid,
+          email: u.email,
+          name: profile.$1,
+          role: profile.$2,
+        );
       } on AuthFailure catch (e) {
         debugPrint('Auth stream failed to fetch profile: $e');
         await _auth.signOut();
@@ -107,7 +120,10 @@ class AuthRemoteDataSource {
 
   Future<(String?, UserRole)> _fetchProfile(String uid) async {
     try {
-      final doc = await _firestore.collection(AppCollections.users.path).doc(uid).get();
+      final doc = await _firestore
+          .collection(AppCollections.users.path)
+          .doc(uid)
+          .get();
       if (!doc.exists) {
         throw const AuthFailure(error: 'profile_missing');
       }

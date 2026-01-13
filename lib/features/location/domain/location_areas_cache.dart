@@ -1,15 +1,15 @@
 import 'dart:async';
 
-import 'package:real_state/features/location/data/repositories/location_repository.dart';
+import 'package:real_state/features/location/domain/repositories/location_areas_repository.dart';
+import 'package:real_state/features/location/domain/repositories/location_repository.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
-import 'package:real_state/features/properties/data/datasources/location_area_remote_datasource.dart';
 
 /// Simple in-memory cache for location areas and their names.
 class LocationAreasCache {
-  LocationAreasCache(this._repo, this._remote);
+  LocationAreasCache(this._repo, this._areas);
 
   final LocationRepository _repo;
-  final LocationAreaRemoteDataSource _remote;
+  final LocationAreasRepository _areas;
 
   Map<String, LocationArea>? _areasById;
   List<LocationArea>? _list;
@@ -46,7 +46,7 @@ class LocationAreasCache {
         .where((id) => !(_areasById?.containsKey(id) ?? false))
         .toList();
     if (missing.isNotEmpty) {
-      final fetched = await _remote.fetchNamesByIds(missing);
+      final fetched = await _areas.fetchNamesByIds(missing);
       _areasById = {...?_areasById, ...fetched};
     }
     return {

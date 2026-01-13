@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -15,7 +13,6 @@ import 'features/settings/domain/usecases/load_theme_mode_usecase.dart';
 import 'features/settings/domain/usecases/update_theme_mode_usecase.dart';
 import 'features/settings/presentation/cubit/settings_cubit.dart';
 import 'features/users/domain/repositories/user_management_repository.dart';
-import 'features/notifications/presentation/notification_coordinator.dart';
 
 class App extends StatelessWidget {
   App({super.key, AppDi? di}) : _di = di ?? AppDi();
@@ -23,9 +20,6 @@ class App extends StatelessWidget {
   // Hold dependencies once for the app lifetime.
   final AppDi _di;
   late final GoRouter _router = AppRouter.create(_di.auth);
-  final NotificationCoordinator _notificationCoordinator =
-      NotificationCoordinator();
-
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
@@ -35,13 +29,6 @@ class App extends StatelessWidget {
         builder: (context) {
           final theme = AppTheme.light();
           final dark = AppTheme.dark();
-
-          unawaited(
-            _notificationCoordinator.configure(
-              context: context,
-              router: _router,
-            ),
-          );
 
           return BlocProvider(
             create: (_) => SettingsCubit(

@@ -1,7 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:equatable/equatable.dart';
 import 'package:real_state/features/notifications/domain/entities/app_notification.dart';
-import 'package:real_state/features/notifications/presentation/models/notification_property_summary.dart';
+import 'package:real_state/features/notifications/domain/models/notification_property_summary.dart';
+import 'package:real_state/features/notifications/presentation/models/notification_action_status.dart';
 
 sealed class NotificationsState extends Equatable {
   const NotificationsState();
@@ -52,11 +52,12 @@ abstract class NotificationsDataState extends NotificationsState
     required this.isCollector,
     required this.propertySummaries,
     required this.pendingRequestIds,
+    required this.actionStatuses,
     this.infoMessage,
   });
 
   final List<AppNotification> items;
-  final DocumentSnapshot<Map<String, dynamic>>? lastDoc;
+  final Object? lastDoc;
   final bool hasMore;
   @override
   final bool isOwner;
@@ -64,6 +65,7 @@ abstract class NotificationsDataState extends NotificationsState
   final bool isCollector;
   final Map<String, NotificationPropertySummary> propertySummaries;
   final Set<String> pendingRequestIds;
+  final Map<String, NotificationActionStatus> actionStatuses;
   final String? infoMessage;
 
   @override
@@ -76,6 +78,7 @@ abstract class NotificationsDataState extends NotificationsState
     propertySummaries,
     pendingRequestIds,
     infoMessage,
+    actionStatuses,
   ];
 }
 
@@ -88,6 +91,7 @@ class NotificationsLoaded extends NotificationsDataState {
     required super.isCollector,
     required super.propertySummaries,
     required super.pendingRequestIds,
+    required super.actionStatuses,
     super.infoMessage,
   });
 }
@@ -118,6 +122,7 @@ class NotificationsPartialFailure extends NotificationsDataState {
     required super.isCollector,
     required super.propertySummaries,
     required super.pendingRequestIds,
+    required super.actionStatuses,
     required this.message,
     super.infoMessage,
   });
@@ -137,6 +142,7 @@ class NotificationsActionInProgress extends NotificationsDataState {
     required super.isCollector,
     required super.propertySummaries,
     required super.pendingRequestIds,
+    required super.actionStatuses,
     super.infoMessage,
   });
 }
@@ -150,6 +156,7 @@ class NotificationsActionFailure extends NotificationsDataState {
     required super.isCollector,
     required super.propertySummaries,
     required super.pendingRequestIds,
+    required super.actionStatuses,
     required this.message,
     super.infoMessage,
   });
@@ -169,6 +176,7 @@ class NotificationsActionSuccess extends NotificationsDataState {
     required super.isCollector,
     required super.propertySummaries,
     required super.pendingRequestIds,
+    required super.actionStatuses,
     super.infoMessage,
   });
 }

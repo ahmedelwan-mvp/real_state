@@ -7,8 +7,8 @@ import 'package:real_state/core/components/app_snackbar.dart';
 import 'package:real_state/features/brokers/presentation/pages/broker_areas_page.dart';
 import 'package:real_state/features/categories/presentation/cubit/categories_cubit.dart';
 import 'package:real_state/features/company_areas/presentation/bloc/company_areas_bloc.dart';
-import 'package:real_state/features/properties/data/datasources/location_area_remote_datasource.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
+import 'package:real_state/features/location/domain/repositories/location_areas_repository.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart';
 import 'package:real_state/features/properties/domain/property_permissions.dart';
 import 'package:real_state/features/properties/presentation/bloc/archive_properties_bloc.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_bloc.dart';
@@ -16,7 +16,7 @@ import 'package:real_state/features/properties/presentation/bloc/property_mutati
 import '../../core/auth/auth_repository.dart';
 import '../../features/auth/presentation/pages/login_page.dart';
 import '../../features/brokers/presentation/pages/broker_area_properties_page.dart';
-import '../../features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
 import '../../features/categories/presentation/pages/categories_filter_page.dart';
 import '../../features/categories/presentation/pages/categories_page.dart';
 import '../../features/company_areas/presentation/pages/company_areas_page.dart';
@@ -51,13 +51,20 @@ class AppRouter {
         GoRoute(path: '/', builder: (c, s) => const SplashPage()),
         GoRoute(path: '/login', builder: (c, s) => LoginPage()),
         GoRoute(path: '/main', builder: (c, s) => const MainShellPage()),
-        GoRoute(path: '/notifications', builder: (c, s) => const NotificationsPage()),
+        GoRoute(
+          path: '/notifications',
+          builder: (c, s) => const NotificationsPage(),
+        ),
         GoRoute(
           path: '/settings/users',
           builder: (c, s) {
             if (!canManageUsers(auth.role)) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                AppSnackbar.show(c, 'access_denied'.tr(), type: AppSnackbarType.error);
+                AppSnackbar.show(
+                  c,
+                  'access_denied'.tr(),
+                  type: AppSnackbarType.error,
+                );
                 c.go('/main');
               });
               return const SizedBox.shrink();
@@ -70,7 +77,11 @@ class AppRouter {
           builder: (c, s) {
             if (!canManageLocations(auth.role)) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                AppSnackbar.show(c, 'access_denied'.tr(), type: AppSnackbarType.error);
+                AppSnackbar.show(
+                  c,
+                  'access_denied'.tr(),
+                  type: AppSnackbarType.error,
+                );
                 c.go('/main');
               });
               return const SizedBox.shrink();
@@ -78,7 +89,10 @@ class AppRouter {
             return const ManageLocationsPage();
           },
         ),
-        GoRoute(path: '/property/new', builder: (c, s) => const PropertyEditorPage()),
+        GoRoute(
+          path: '/property/new',
+          builder: (c, s) => const PropertyEditorPage(),
+        ),
         GoRoute(
           path: '/property/:id/edit',
           builder: (c, s) => PropertyEditorPage(property: s.extra as Property?),
@@ -86,8 +100,12 @@ class AppRouter {
         GoRoute(
           path: '/property/:id',
           builder: (c, s) {
-            final readOnly = s.extra is Map && (s.extra as Map)['readOnly'] == true;
-            return PropertyPage(id: s.pathParameters['id']!, readOnly: readOnly);
+            final readOnly =
+                s.extra is Map && (s.extra as Map)['readOnly'] == true;
+            return PropertyPage(
+              id: s.pathParameters['id']!,
+              readOnly: readOnly,
+            );
           },
         ),
         GoRoute(
@@ -105,7 +123,11 @@ class AppRouter {
             // Assuming access control is same as areas page for now.
             if (!canAccessBrokersRoutes(auth.role)) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                AppSnackbar.show(c, 'access_denied'.tr(), type: AppSnackbarType.error);
+                AppSnackbar.show(
+                  c,
+                  'access_denied'.tr(),
+                  type: AppSnackbarType.error,
+                );
                 c.go('/main');
               });
               return const SizedBox.shrink();
@@ -117,12 +139,16 @@ class AppRouter {
                 brokerName = extra['name'] as String;
               }
             }
-            return BrokerAreasPage(brokerId: s.pathParameters['id']!, brokerName: brokerName);
+            return BrokerAreasPage(
+              brokerId: s.pathParameters['id']!,
+              brokerName: brokerName,
+            );
           },
           routes: [
             GoRoute(
               path: 'areas',
-              redirect: (context, state) => '/broker/${state.pathParameters['id']}',
+              redirect: (context, state) =>
+                  '/broker/${state.pathParameters['id']}',
             ),
           ],
         ),
@@ -131,7 +157,11 @@ class AppRouter {
           builder: (c, s) {
             if (!canAccessBrokersRoutes(auth.role)) {
               WidgetsBinding.instance.addPostFrameCallback((_) {
-                AppSnackbar.show(c, 'access_denied'.tr(), type: AppSnackbarType.error);
+                AppSnackbar.show(
+                  c,
+                  'access_denied'.tr(),
+                  type: AppSnackbarType.error,
+                );
                 c.go('/main');
               });
               return const SizedBox.shrink();
@@ -170,17 +200,27 @@ class AppRouter {
         GoRoute(
           path: '/filters/categories',
           builder: (c, s) {
-            final cubit = s.extra is CategoriesCubit ? s.extra as CategoriesCubit : null;
+            final cubit = s.extra is CategoriesCubit
+                ? s.extra as CategoriesCubit
+                : null;
             if (cubit == null) return const NotFoundPage();
-            return BlocProvider.value(value: cubit, child: const CategoriesFilterPage());
+            return BlocProvider.value(
+              value: cubit,
+              child: const CategoriesFilterPage(),
+            );
           },
         ),
         GoRoute(
           path: '/categories',
           builder: (c, s) {
-            final cubit = s.extra is CategoriesCubit ? s.extra as CategoriesCubit : null;
+            final cubit = s.extra is CategoriesCubit
+                ? s.extra as CategoriesCubit
+                : null;
             if (cubit == null) return const NotFoundPage();
-            return BlocProvider.value(value: cubit, child: const CategoriesPage());
+            return BlocProvider.value(
+              value: cubit,
+              child: const CategoriesPage(),
+            );
           },
         ),
         GoRoute(
@@ -195,7 +235,7 @@ class AppRouter {
           builder: (c, s) => BlocProvider(
             create: (context) => ArchivePropertiesBloc(
               context.read<PropertiesRepository>(),
-              context.read<LocationAreaRemoteDataSource>(),
+              context.read<LocationAreasRepository>(),
               context.read<PropertyMutationsBloc>(),
             ),
             child: const ArchivePropertiesPage(),
@@ -204,12 +244,20 @@ class AppRouter {
         GoRoute(
           path: '/company/areas',
           builder: (c, s) {
-            final bloc = s.extra is CompanyAreasBloc ? s.extra as CompanyAreasBloc : null;
+            final bloc = s.extra is CompanyAreasBloc
+                ? s.extra as CompanyAreasBloc
+                : null;
             if (bloc == null) return const NotFoundPage();
-            return BlocProvider.value(value: bloc, child: const CompanyAreasPage());
+            return BlocProvider.value(
+              value: bloc,
+              child: const CompanyAreasPage(),
+            );
           },
         ),
-        GoRoute(path: '/properties/my-added', builder: (c, s) => const MyAddedPropertiesPage()),
+        GoRoute(
+          path: '/properties/my-added',
+          builder: (c, s) => const MyAddedPropertiesPage(),
+        ),
       ],
       errorBuilder: (context, state) => const NotFoundPage(),
       redirect: (context, state) {

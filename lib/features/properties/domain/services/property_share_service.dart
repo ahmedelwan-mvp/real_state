@@ -21,8 +21,8 @@ class PropertyShareService {
   PropertyShareService({
     BaseCacheManager? cacheManager,
     PdfPropertyBuilder? pdfBuilder,
-  })  : _cacheManager = cacheManager ?? DefaultCacheManager(),
-        _pdfBuilder = pdfBuilder ?? PdfPropertyBuilder();
+  }) : _cacheManager = cacheManager ?? DefaultCacheManager(),
+       _pdfBuilder = pdfBuilder ?? PdfPropertyBuilder();
 
   Future<void> shareImagesOnly({
     required Property property,
@@ -78,8 +78,9 @@ class PropertyShareService {
     bool includeImages = true,
     PropertyShareProgressCallback? onProgress,
   }) async {
-    final titleText =
-        property.title?.isNotEmpty == true ? property.title! : 'property'.tr();
+    final titleText = property.title?.isNotEmpty == true
+        ? property.title!
+        : 'property'.tr();
     final descriptionText = property.description ?? '';
     _reportProgress(onProgress, PropertyShareStage.preparingData);
     final images = includeImages
@@ -128,7 +129,8 @@ class PropertyShareService {
         if (file == null) throw const LocalizedException('unable_load_images');
         final bytes = await file.readAsBytes();
         final decoded = img.decodeImage(bytes);
-        if (decoded == null) throw const LocalizedException('unable_load_images');
+        if (decoded == null)
+          throw const LocalizedException('unable_load_images');
         images.add(
           PdfImageData(
             bytes: bytes,
@@ -157,8 +159,9 @@ class PropertyShareService {
   Future<pw.Font?> _loadArabicFont() async {
     if (_arabicFont != null) return _arabicFont;
     try {
-      final data =
-          await rootBundle.load('assets/fonts/noto_sans_arabic/NotoSansArabic-Regular.ttf');
+      final data = await rootBundle.load(
+        'assets/fonts/noto_sans_arabic/NotoSansArabic-Regular.ttf',
+      );
       _arabicFont = pw.Font.ttf(data);
       return _arabicFont;
     } catch (_) {
@@ -171,9 +174,8 @@ class PropertyShareService {
     PropertyShareStage stage,
   ) {
     if (onProgress == null) return;
-    onProgress(PropertyShareProgress(
-      stage: stage,
-      fraction: stage.defaultFraction(),
-    ));
+    onProgress(
+      PropertyShareProgress(stage: stage, fraction: stage.defaultFraction()),
+    );
   }
 }

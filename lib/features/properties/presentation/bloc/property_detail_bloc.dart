@@ -1,31 +1,29 @@
 import 'dart:async';
 
 import 'package:easy_localization/easy_localization.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:real_state/core/constants/user_role.dart';
 import 'package:real_state/core/handle_errors/error_mapper.dart';
-import 'package:real_state/features/access_requests/data/repositories/access_requests_repository.dart';
+import 'package:real_state/features/access_requests/domain/repositories/access_requests_repository.dart';
 import 'package:real_state/features/access_requests/domain/resolve_access_request_target_usecase.dart';
 import 'package:real_state/features/access_requests/domain/usecases/create_access_request_usecase.dart';
 import 'package:real_state/features/auth/domain/repositories/auth_repository_domain.dart';
 import 'package:real_state/features/models/entities/access_request.dart';
 import 'package:real_state/features/models/entities/property.dart';
 import 'package:real_state/features/notifications/domain/repositories/notifications_repository.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
-import 'package:real_state/features/properties/domain/models/property_share_progress.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart';
 import 'package:real_state/features/properties/domain/property_owner_scope.dart';
 import 'package:real_state/features/properties/domain/property_permissions.dart';
-import 'package:real_state/features/properties/domain/services/property_share_service.dart';
-import 'package:real_state/features/properties/domain/usecases/archive_property_usecase.dart';
-import 'package:real_state/features/properties/domain/usecases/delete_property_usecase.dart';
-import 'package:real_state/features/properties/domain/usecases/restore_property_usecase.dart';
-import 'package:real_state/features/properties/domain/usecases/share_property_pdf_usecase.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_detail_event.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_detail_state.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_bloc.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_state.dart';
-import 'package:real_state/features/users/data/repositories/users_repository.dart';
+import 'package:real_state/features/properties/presentation/mutations/property_mutation_cubit.dart';
+import 'package:real_state/features/properties/presentation/share/property_share_cubit.dart';
+import 'package:real_state/features/properties/presentation/share/property_share_state.dart';
+import 'package:real_state/features/users/domain/repositories/users_lookup_repository.dart';
 
 class PropertyDetailBloc
     extends Bloc<PropertyDetailEvent, PropertyDetailState> {
@@ -33,20 +31,18 @@ class PropertyDetailBloc
   final AccessRequestsRepository _accessRequestsRepository;
   final AuthRepositoryDomain _authRepository;
   final NotificationsRepository _notificationsRepository;
-  final PropertyShareService _shareService;
-  final UsersRepository _usersRepository;
+  final UsersLookupRepository _usersRepository;
   final PropertyMutationsBloc _mutations;
   final CreateAccessRequestUseCase _createAccessRequestUseCase;
-  final ArchivePropertyUseCase _archivePropertyUseCase;
-  final DeletePropertyUseCase _deletePropertyUseCase;
-  final RestorePropertyUseCase _restorePropertyUseCase;
-  final SharePropertyPdfUseCase _sharePropertyPdfUseCase;
+  final PropertyMutationCubit _mutationCubit;
+  final PropertyShareCubit _shareCubit;
   final Map<String, String?> _userNameCache = {};
 
   StreamSubscription<AccessRequest?>? _imagesReqSub;
   StreamSubscription<AccessRequest?>? _phoneReqSub;
   StreamSubscription<AccessRequest?>? _locationReqSub;
   StreamSubscription<PropertyMutation?>? _mutationSub;
+  StreamSubscription<PropertyShareState>? _shareSub;
   String? _currentPropertyId;
 
   PropertyDetailBloc(
@@ -54,15 +50,12 @@ class PropertyDetailBloc
     this._accessRequestsRepository,
     this._authRepository,
     this._notificationsRepository,
-    this._shareService,
-    UsersRepository usersRepository,
+    UsersLookupRepository usersRepository,
+    PropertyMutationCubit mutationCubit,
+    PropertyShareCubit shareCubit,
     this._mutations, {
     ResolveAccessRequestTargetUseCase? resolveAccessTargetUseCase,
     CreateAccessRequestUseCase? createAccessRequestUseCase,
-    ArchivePropertyUseCase? archivePropertyUseCase,
-    DeletePropertyUseCase? deletePropertyUseCase,
-    RestorePropertyUseCase? restorePropertyUseCase,
-    SharePropertyPdfUseCase? sharePropertyPdfUseCase,
   }) : _usersRepository = usersRepository,
        _createAccessRequestUseCase =
            createAccessRequestUseCase ??
@@ -71,17 +64,8 @@ class PropertyDetailBloc
              resolveAccessTargetUseCase ??
                  ResolveAccessRequestTargetUseCase(usersRepository),
            ),
-       _archivePropertyUseCase =
-           archivePropertyUseCase ??
-           ArchivePropertyUseCase(_propertiesRepository),
-       _deletePropertyUseCase =
-           deletePropertyUseCase ??
-           DeletePropertyUseCase(_propertiesRepository),
-       _restorePropertyUseCase =
-           restorePropertyUseCase ??
-           RestorePropertyUseCase(_propertiesRepository),
-       _sharePropertyPdfUseCase =
-           sharePropertyPdfUseCase ?? SharePropertyPdfUseCase(_shareService),
+       _mutationCubit = mutationCubit,
+       _shareCubit = shareCubit,
        super(const PropertyDetailInitial()) {
     on<PropertyDetailStarted>(_onStarted);
     on<PropertyAccessRequested>(_onAccessRequested);
@@ -94,6 +78,7 @@ class PropertyDetailBloc
     on<PropertyInfoCleared>(_onInfoCleared);
     on<PropertyExternalMutationReceived>(_onExternalMutation);
     on<PropertyAccessRequestUpdated>(_onAccessRequestUpdated);
+    on<PropertyShareStateChanged>(_onShareStateChanged);
 
     _mutationSub = _mutations.mutationStream.listen((event) {
       final id = _currentPropertyId;
@@ -101,6 +86,9 @@ class PropertyDetailBloc
         add(PropertyExternalMutationReceived(id));
       }
     });
+    _shareSub = _shareCubit.stream.listen(
+      (state) => add(PropertyShareStateChanged(state)),
+    );
   }
 
   Future<void> _onStarted(
@@ -111,7 +99,9 @@ class PropertyDetailBloc
     _currentPropertyId = event.propertyId;
     emit(const PropertyDetailLoading());
     try {
-      final user = await _authRepository.userChanges.first;
+      final user =
+          _authRepository.currentUser ??
+          await _authRepository.userChanges.first;
       final property = await _propertiesRepository.getById(event.propertyId);
       final userId = user?.id;
       final role = user?.role;
@@ -336,16 +326,10 @@ class PropertyDetailBloc
     }
     emit(PropertyDetailActionInProgress(loaded));
     try {
-      final updated = await _archivePropertyUseCase(
+      await _mutationCubit.archive(
         property: property,
         userId: userId,
         userRole: role,
-      );
-      _mutations.notify(
-        PropertyMutationType.archived,
-        propertyId: property.id,
-        ownerScope: updated.ownerScope,
-        locationAreaId: updated.locationAreaId,
       );
       emit(
         PropertyDetailActionSuccess(
@@ -391,16 +375,10 @@ class PropertyDetailBloc
     }
     emit(PropertyDetailActionInProgress(loaded));
     try {
-      final restored = await _restorePropertyUseCase(
+      await _mutationCubit.restore(
         property: property,
         userId: userId,
         userRole: role,
-      );
-      _mutations.notify(
-        PropertyMutationType.updated,
-        propertyId: restored.id,
-        ownerScope: restored.ownerScope,
-        locationAreaId: restored.locationAreaId,
       );
       emit(
         PropertyDetailActionSuccess(
@@ -445,16 +423,10 @@ class PropertyDetailBloc
     }
     emit(PropertyDetailActionInProgress(loaded));
     try {
-      await _deletePropertyUseCase(
+      await _mutationCubit.delete(
         property: property,
         userId: userId,
         userRole: role,
-      );
-      _mutations.notify(
-        PropertyMutationType.deleted,
-        propertyId: property.id,
-        ownerScope: property.ownerScope,
-        locationAreaId: property.locationAreaId,
       );
       emit(PropertyDetailActionSuccess(loaded));
     } catch (e, st) {
@@ -499,37 +471,7 @@ class PropertyDetailBloc
       );
       return;
     }
-
-    void progressReporter(PropertyShareProgress progress) {
-      _emitShareProgress(loaded, progress, emit);
-    }
-
-    emit(
-      PropertyDetailShareInProgress(
-        loaded,
-        PropertyShareProgress(
-          stage: PropertyShareStage.preparingData,
-          fraction: PropertyShareStage.preparingData.defaultFraction(),
-        ),
-      ),
-    );
-
-    try {
-      await _shareService.shareImagesOnly(
-        property: loaded.property,
-        onProgress: progressReporter,
-      );
-      emit(PropertyDetailShareSuccess(loaded));
-      emit(PropertyDetailActionSuccess(loaded));
-    } catch (e, st) {
-      emit(
-        PropertyDetailShareFailure(
-          loaded,
-          message: mapErrorMessage(e, stackTrace: st),
-        ),
-      );
-      emit(PropertyDetailActionSuccess(loaded));
-    }
+    await _shareCubit.shareImages(property: loaded.property);
   }
 
   Future<void> _onSharePdf(
@@ -564,50 +506,14 @@ class PropertyDetailBloc
       );
       return;
     }
-    void progressReporter(PropertyShareProgress progress) {
-      _emitShareProgress(loaded, progress, emit);
-    }
-
-    emit(
-      PropertyDetailShareInProgress(
-        loaded,
-        PropertyShareProgress(
-          stage: PropertyShareStage.preparingData,
-          fraction: PropertyShareStage.preparingData.defaultFraction(),
-        ),
-      ),
+    await _shareCubit.sharePdf(
+      property: loaded.property,
+      localeCode: event.context.locale.toString(),
+      imagesVisible: includeImages,
+      locationVisible: loaded.locationVisible,
+      role: loaded.userRole,
+      userId: loaded.userId,
     );
-    try {
-      await _sharePropertyPdfUseCase(
-        property: loaded.property,
-        role: loaded.userRole,
-        userId: loaded.userId,
-        imagesVisible: includeImages,
-        locationVisible: loaded.locationVisible,
-        localeCode: event.context.locale.toString(),
-        includeImages: includeImages,
-        onProgress: progressReporter,
-      );
-      emit(PropertyDetailShareSuccess(loaded));
-      emit(PropertyDetailActionSuccess(loaded));
-    } catch (e, st) {
-      debugPrint(e.toString());
-      emit(
-        PropertyDetailShareFailure(
-          loaded,
-          message: mapErrorMessage(e, stackTrace: st),
-        ),
-      );
-      emit(PropertyDetailActionSuccess(loaded));
-    }
-  }
-
-  void _emitShareProgress(
-    PropertyDetailLoaded loaded,
-    PropertyShareProgress progress,
-    Emitter<PropertyDetailState> emit,
-  ) {
-    emit(PropertyDetailShareInProgress(loaded, progress));
   }
 
   void _onImagesLoadMore(
@@ -647,6 +553,30 @@ class PropertyDetailBloc
     add(PropertyDetailStarted(event.propertyId));
   }
 
+  void _onShareStateChanged(
+    PropertyShareStateChanged event,
+    Emitter<PropertyDetailState> emit,
+  ) {
+    final shareState = event.shareState;
+    final loaded = _currentLoadedState();
+    if (loaded == null) return;
+    if (shareState is PropertyShareInProgress) {
+      emit(PropertyDetailShareInProgress(loaded, shareState.progress));
+      return;
+    }
+    if (shareState is PropertyShareSuccess) {
+      emit(PropertyDetailShareSuccess(loaded));
+      emit(PropertyDetailActionSuccess(loaded));
+      return;
+    }
+    if (shareState is PropertyShareFailure) {
+      emit(
+        PropertyDetailShareFailure(loaded, message: shareState.errorMessage),
+      );
+      emit(PropertyDetailActionSuccess(loaded));
+    }
+  }
+
   Future<void> _onAccessRequestUpdated(
     PropertyAccessRequestUpdated event,
     Emitter<PropertyDetailState> emit,
@@ -672,6 +602,16 @@ class PropertyDetailBloc
         ? updated.copyWith(infoMessage: message)
         : updated;
     emit(PropertyDetailActionSuccess(withMessage, message: message));
+  }
+
+  PropertyDetailLoaded? _currentLoadedState() {
+    final current = state;
+    if (current is PropertyDetailLoaded) return current;
+    if (current is PropertyDetailActionSuccess) return current.data;
+    if (current is PropertyDetailShareInProgress) return current.data;
+    if (current is PropertyDetailShareSuccess) return current.data;
+    if (current is PropertyDetailShareFailure) return current.data;
+    return null;
   }
 
   PropertyDetailLoaded _withAccessRequest(
@@ -739,6 +679,7 @@ class PropertyDetailBloc
   Future<void> close() {
     _cancelStreams();
     _mutationSub?.cancel();
+    _shareSub?.cancel();
     return super.close();
   }
 }

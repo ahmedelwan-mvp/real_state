@@ -4,15 +4,17 @@ import '../../../../core/constants/app_collections.dart';
 import '../../../../core/constants/user_role.dart';
 import '../../../../core/errors/localized_exception.dart';
 import '../../domain/entities/managed_user.dart';
+import '../../domain/repositories/users_lookup_repository.dart';
 import '../dtos/managed_user_dto.dart';
 
-class UsersRepository {
+class UsersRepository implements UsersLookupRepository {
   final FirebaseFirestore _firestore;
   final String _collection;
 
   UsersRepository(this._firestore, {String? collection})
     : _collection = collection ?? AppCollections.users.path;
 
+  @override
   Future<List<ManagedUser>> fetchUsers({UserRole? role}) async {
     Query<Map<String, dynamic>> q = _firestore.collection(_collection);
     if (role != null) q = q.where('role', isEqualTo: roleToString(role));
@@ -20,6 +22,7 @@ class UsersRepository {
     return snap.docs.map(ManagedUserDto.fromDoc).toList();
   }
 
+  @override
   Future<ManagedUser> getById(String id) async {
     final doc = await _firestore.collection(_collection).doc(id).get();
     return ManagedUserDto.fromDoc(doc);

@@ -29,7 +29,11 @@ class SettingsPage extends StatelessWidget {
       body: BlocConsumer<SettingsCubit, SettingsState>(
         listener: (context, state) {
           if (state is SettingsFailure) {
-            AppSnackbar.show(context, state.message, type: AppSnackbarType.error);
+            AppSnackbar.show(
+              context,
+              state.message,
+              type: AppSnackbarType.error,
+            );
           }
         },
         builder: (context, state) {
@@ -77,7 +81,10 @@ class SettingsPage extends StatelessWidget {
                     ),
                 ] else if (!isLoading) ...[
                   Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12),
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 8.0,
+                      horizontal: 12,
+                    ),
                     child: Text(
                       'section_hidden_for_role'.tr(),
                       style: Theme.of(context).textTheme.bodySmall,
@@ -112,16 +119,24 @@ class SettingsPage extends StatelessWidget {
     final locale = context.locale;
     return ListTile(
       title: Text('language'.tr()),
-      subtitle: Text(locale.languageCode == 'ar' ? 'arabic'.tr() : 'english'.tr()),
+      subtitle: Text(
+        locale.languageCode == 'ar' ? 'arabic'.tr() : 'english'.tr(),
+      ),
       leading: const Icon(Icons.language),
       onTap: () async {
-        final newLocale = locale.languageCode == 'ar' ? const Locale('en') : const Locale('ar');
+        final newLocale = locale.languageCode == 'ar'
+            ? const Locale('en')
+            : const Locale('ar');
         await context.setLocale(newLocale);
       },
     );
   }
 
-  Widget _buildThemeTile(BuildContext context, SettingsState state, {required bool isLoading}) {
+  Widget _buildThemeTile(
+    BuildContext context,
+    SettingsState state, {
+    required bool isLoading,
+  }) {
     return ListTile(
       title: Text('theme'.tr()),
       subtitle: Text(_themeModeLabel(state.themeMode)),
@@ -134,7 +149,10 @@ class SettingsPage extends StatelessWidget {
                 ThemeMode.light => ThemeMode.dark,
                 ThemeMode.dark => ThemeMode.system,
               };
-              await LoadingDialog.show(context, context.read<SettingsCubit>().changeTheme(next));
+              await LoadingDialog.show(
+                context,
+                context.read<SettingsCubit>().changeTheme(next),
+              );
             },
     );
   }

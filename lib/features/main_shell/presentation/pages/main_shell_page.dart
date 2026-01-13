@@ -1,22 +1,22 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:real_state/core/components/app_snackbar.dart';
 import 'package:real_state/features/auth/domain/repositories/auth_repository_domain.dart';
 import 'package:real_state/features/brokers/domain/usecases/get_broker_areas_usecase.dart';
 import 'package:real_state/features/brokers/presentation/bloc/areas/broker_areas_bloc.dart';
-import 'package:real_state/core/components/app_snackbar.dart';
 import 'package:real_state/features/categories/presentation/cubit/categories_cubit.dart';
 import 'package:real_state/features/categories/presentation/pages/categories_filter_page.dart';
 import 'package:real_state/features/company_areas/domain/usecases/get_company_areas_usecase.dart';
 import 'package:real_state/features/company_areas/presentation/bloc/company_areas_bloc.dart';
 import 'package:real_state/features/company_areas/presentation/bloc/company_areas_event.dart';
 import 'package:real_state/features/location/domain/usecases/get_location_areas_usecase.dart';
+import 'package:real_state/features/main_shell/presentation/pages/home_page.dart';
 import 'package:real_state/features/main_shell/presentation/widgets/liquid_glass_bottom_bar.dart';
 import 'package:real_state/features/main_shell/presentation/widgets/liquid_glass_bottom_bar_tab.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_bloc.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_state.dart';
-import 'package:real_state/features/properties/presentation/pages/properties_page.dart';
 import 'package:real_state/features/settings/presentation/pages/settings_page.dart';
 
 class BottomTabController {

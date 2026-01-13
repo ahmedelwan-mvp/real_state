@@ -70,4 +70,5 @@ extension PropertyShareStageX on PropertyShareStage {
   }
 }
 
-typedef PropertyShareProgressCallback = void Function(PropertyShareProgress progress);
+typedef PropertyShareProgressCallback =
+    void Function(PropertyShareProgress progress);

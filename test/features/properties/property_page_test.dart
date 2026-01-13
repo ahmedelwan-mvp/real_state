@@ -1,29 +1,35 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
 import 'package:real_state/core/constants/user_role.dart';
-import 'package:real_state/features/access_requests/data/repositories/access_requests_repository.dart';
+import 'package:real_state/features/access_requests/domain/repositories/access_requests_repository.dart';
 import 'package:real_state/features/auth/domain/entities/user_entity.dart';
-import 'package:real_state/features/auth/domain/repositories/auth_repository_domain.dart';
 import 'package:real_state/features/models/entities/access_request.dart';
 import 'package:real_state/features/models/entities/property.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
+import 'package:real_state/features/properties/data/repositories/properties_repository_impl.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart';
 import 'package:real_state/features/properties/presentation/pages/property_page.dart';
+import 'package:real_state/features/users/domain/entities/managed_user.dart';
 
 import '../fake_auth_repo/fake_auth_repo.dart';
+import '../../fakes/fake_firebase.dart';
+import '../../fakes/fake_repositories.dart';
+import '../../helpers/pump_test_app.dart';
 
-class _FakePropertiesRepo extends PropertiesRepository {
+class _FakePropertiesRepo extends PropertiesRepositoryImpl {
   final Property _prop;
-  _FakePropertiesRepo(this._prop) : super(null as dynamic);
+
+  _FakePropertiesRepo(this._prop) : super(FakeFirebaseFirestore());
 
   @override
   Future<Property?> getById(String id) async => _prop;
 }
 
-class _FakeAccessRepo extends AccessRequestsRepository {
-  _FakeAccessRepo() : super(null as dynamic);
+class _FakeAccessRepo implements AccessRequestsRepository {
+  _FakeAccessRepo();
 
   bool called = false;
   AccessRequestType? lastType;
@@ -38,7 +44,6 @@ class _FakeAccessRepo extends AccessRequestsRepository {
   }) async {
     called = true;
     lastType = type;
-    // simulate immediate acceptance for testing
     return AccessRequest(
       id: 'r1',
       propertyId: propertyId,
@@ -60,10 +65,35 @@ class _FakeAccessRepo extends AccessRequestsRepository {
   }) {
     return const Stream.empty();
   }
+
+  @override
+  Future<PageResult<AccessRequest>> fetchPage({
+    DocumentSnapshot<Map<String, dynamic>>? startAfter,
+    int limit = 10,
+    String? requesterId,
+    String? ownerId,
+  }) async => PageResult(items: const [], lastDocument: null, hasMore: false);
+
+  @override
+  Future<AccessRequest?> fetchLatestAcceptedRequest({
+    required String propertyId,
+    required String requesterId,
+    required AccessRequestType type,
+  }) async => null;
+
+  @override
+  Future<AccessRequest?> fetchById(String id) async => null;
+
+  @override
+  Future<AccessRequest> updateStatus({
+    required String requestId,
+    required AccessRequestStatus status,
+    required String decidedBy,
+  }) async => throw UnimplementedError();
 }
 
-class _StreamAccessRepo extends AccessRequestsRepository {
-  _StreamAccessRepo() : super(null as dynamic);
+class _StreamAccessRepo implements AccessRequestsRepository {
+  _StreamAccessRepo();
 
   final StreamController<AccessRequest?> ctrl = StreamController.broadcast();
   bool called = false;
@@ -78,7 +108,7 @@ class _StreamAccessRepo extends AccessRequestsRepository {
   }) async {
     called = true;
     final now = DateTime.now();
-    final r = AccessRequest(
+    final request = AccessRequest(
       id: 'r1',
       propertyId: propertyId,
       requesterId: requesterId,
@@ -89,8 +119,8 @@ class _StreamAccessRepo extends AccessRequestsRepository {
       ownerId: targetUserId,
       expiresAt: now.add(const Duration(hours: 24)),
     );
-    ctrl.add(r);
-    return r;
+    ctrl.add(request);
+    return request;
   }
 
   @override
@@ -101,6 +131,31 @@ class _StreamAccessRepo extends AccessRequestsRepository {
   }) {
     return ctrl.stream;
   }
+
+  @override
+  Future<PageResult<AccessRequest>> fetchPage({
+    DocumentSnapshot<Map<String, dynamic>>? startAfter,
+    int limit = 10,
+    String? requesterId,
+    String? ownerId,
+  }) async => PageResult(items: const [], lastDocument: null, hasMore: false);
+
+  @override
+  Future<AccessRequest?> fetchLatestAcceptedRequest({
+    required String propertyId,
+    required String requesterId,
+    required AccessRequestType type,
+  }) async => null;
+
+  @override
+  Future<AccessRequest?> fetchById(String id) async => null;
+
+  @override
+  Future<AccessRequest> updateStatus({
+    required String requestId,
+    required AccessRequestStatus status,
+    required String decidedBy,
+  }) async => throw UnimplementedError();
 }
 
 void main() {
@@ -124,7 +179,7 @@ void main() {
       isImagesHidden: true,
       status: PropertyStatus.active,
       isDeleted: false,
-      createdBy: '',
+      createdBy: 'u1',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       updatedBy: null,
@@ -132,45 +187,39 @@ void main() {
 
     final fakeProps = _FakePropertiesRepo(prop);
     final fakeAccess = _FakeAccessRepo();
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: MultiProvider(
-          providers: [
-            Provider<PropertiesRepository>.value(value: fakeProps),
-            Provider<AccessRequestsRepository>.value(value: fakeAccess),
-            Provider<AuthRepositoryDomain>.value(
-              value: FakeAuthRepo(
-                UserEntity(id: 'u1', email: 'u@x', role: UserRole.collector),
-              ),
-            ),
-          ],
-          child: PropertyPage(id: 'p1'),
-        ),
+    final fakeNotifications = FakeNotificationsRepository();
+    final fakeUsers = FakeUsersRepository();
+    fakeUsers.seed(
+      ManagedUser(id: 'u1', email: 'u@x', role: UserRole.collector),
+    );
+    final deps = TestAppDependencies(
+      propertiesRepositoryOverride: fakeProps,
+      accessRequestsRepositoryOverride: fakeAccess,
+      notificationsRepositoryOverride: fakeNotifications,
+      usersRepositoryOverride: fakeUsers,
+      authRepositoryOverride: FakeAuthRepo(
+        UserEntity(id: 'u1', email: 'u@x', role: UserRole.collector),
       ),
     );
+    addTearDown(() => deps.propertyMutationsBloc.close());
+
+    await pumpTestApp(tester, PropertyPage(id: 'p1'), dependencies: deps);
 
     await tester.pumpAndSettle();
 
-    // locked state visible
     expect(find.text('Images are hidden for this property'), findsOneWidget);
 
-    // open request dialog
     await tester.tap(find.text('Request Images Access'));
     await tester.pumpAndSettle();
 
-    // enter message and submit
     await tester.enterText(find.byType(TextField), 'Please');
     await tester.tap(find.text('Submit'));
     await tester.pump();
 
-    // loading indicator shown (circular progress)
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
-    // wait for repo to finish
     await tester.pumpAndSettle();
 
-    // request should have been called and images now visible
     expect(fakeAccess.called, isTrue);
     expect(find.byType(Image), findsWidgets);
   });
@@ -195,7 +244,7 @@ void main() {
       isImagesHidden: true,
       status: PropertyStatus.active,
       isDeleted: false,
-      createdBy: '',
+      createdBy: 'u1',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       updatedBy: null,
@@ -203,40 +252,34 @@ void main() {
 
     final fakeProps = _FakePropertiesRepo(prop);
     final fakeAccess = _StreamAccessRepo();
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: MultiProvider(
-          providers: [
-            Provider<PropertiesRepository>.value(value: fakeProps),
-            Provider<AccessRequestsRepository>.value(value: fakeAccess),
-            Provider<AuthRepositoryDomain>.value(
-              value: FakeAuthRepo(
-                UserEntity(id: 'u1', email: 'u@x', role: UserRole.collector),
-              ),
-            ),
-          ],
-          child: PropertyPage(id: 'p1'),
-        ),
+    final fakeNotifications = FakeNotificationsRepository();
+    final fakeUsers = FakeUsersRepository();
+    fakeUsers.seed(
+      ManagedUser(id: 'u1', email: 'u@x', role: UserRole.collector),
+    );
+    final deps = TestAppDependencies(
+      propertiesRepositoryOverride: fakeProps,
+      accessRequestsRepositoryOverride: fakeAccess,
+      notificationsRepositoryOverride: fakeNotifications,
+      usersRepositoryOverride: fakeUsers,
+      authRepositoryOverride: FakeAuthRepo(
+        UserEntity(id: 'u1', email: 'u@x', role: UserRole.collector),
       ),
     );
+    addTearDown(() => deps.propertyMutationsBloc.close());
+
+    await pumpTestApp(tester, PropertyPage(id: 'p1'), dependencies: deps);
 
     await tester.pumpAndSettle();
 
-    // locked state visible
     expect(find.text('Images are hidden for this property'), findsOneWidget);
 
-    // request (pending) -> images still locked after submit
     await tester.tap(find.text('Request Images Access'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Submit'));
     await tester.pumpAndSettle();
-    expect(
-      fakeAccess.called,
-      isFalse,
-    ); // _StreamAccessRepo sets called only if overridden; ensure stream created
+    expect(fakeAccess.called, isTrue);
 
-    // simulate owner accepting later
     final now = DateTime.now();
     fakeAccess.ctrl.add(
       AccessRequest(
@@ -277,7 +320,7 @@ void main() {
       isImagesHidden: false,
       status: PropertyStatus.active,
       isDeleted: false,
-      createdBy: '',
+      createdBy: 'u1',
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
       updatedBy: null,
@@ -285,36 +328,33 @@ void main() {
 
     final fakeProps = _FakePropertiesRepo(prop);
     final fakeAccess = _StreamAccessRepo();
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: MultiProvider(
-          providers: [
-            Provider<PropertiesRepository>.value(value: fakeProps),
-            Provider<AccessRequestsRepository>.value(value: fakeAccess),
-            Provider<AuthRepositoryDomain>.value(
-              value: FakeAuthRepo(
-                UserEntity(id: 'u1', email: 'u@x', role: UserRole.collector),
-              ),
-            ),
-          ],
-          child: PropertyPage(id: 'p1'),
-        ),
+    final fakeNotifications = FakeNotificationsRepository();
+    final fakeUsers = FakeUsersRepository();
+    fakeUsers.seed(
+      ManagedUser(id: 'u1', email: 'u@x', role: UserRole.collector),
+    );
+    final deps = TestAppDependencies(
+      propertiesRepositoryOverride: fakeProps,
+      accessRequestsRepositoryOverride: fakeAccess,
+      notificationsRepositoryOverride: fakeNotifications,
+      usersRepositoryOverride: fakeUsers,
+      authRepositoryOverride: FakeAuthRepo(
+        UserEntity(id: 'u1', email: 'u@x', role: UserRole.collector),
       ),
     );
+    addTearDown(() => deps.propertyMutationsBloc.close());
+
+    await pumpTestApp(tester, PropertyPage(id: 'p1'), dependencies: deps);
 
     await tester.pumpAndSettle();
 
-    // phone hidden initially
     expect(find.text('Phone is hidden'), findsOneWidget);
 
-    // request phone access
     await tester.tap(find.text('Request Owner Phone'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Submit'));
     await tester.pumpAndSettle();
 
-    // simulate owner accepting later
     final now = DateTime.now();
     fakeAccess.ctrl.add(
       AccessRequest(

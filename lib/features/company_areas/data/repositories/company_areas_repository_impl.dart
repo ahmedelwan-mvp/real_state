@@ -3,7 +3,7 @@ import 'package:real_state/core/errors/localized_exception.dart';
 
 import '../../../models/entities/location_area.dart';
 import '../../../properties/data/datasources/location_area_remote_datasource.dart';
-import '../../../properties/data/repositories/properties_repository.dart';
+import '../../../properties/domain/repositories/properties_repository.dart';
 import '../../domain/entities/company_area_summary.dart';
 import '../../domain/repositories/company_areas_repository.dart';
 
@@ -20,7 +20,10 @@ class CompanyAreasRepositoryImpl implements CompanyAreasRepository {
     var hasMore = true;
     try {
       while (hasMore) {
-        final page = await _propertiesRepository.fetchCompanyPage(startAfter: cursor, limit: 50);
+        final page = await _propertiesRepository.fetchCompanyPage(
+          startAfter: cursor,
+          limit: 50,
+        );
         for (final property in page.items) {
           final areaId = property.locationAreaId ?? '';
           counts[areaId] = (counts[areaId] ?? 0) + 1;
@@ -48,7 +51,9 @@ class CompanyAreasRepositoryImpl implements CompanyAreasRepository {
             .map(
               (entry) => AreaSummary(
                 areaId: entry.key,
-                name: names[entry.key]?.localizedName() ?? (entry.key.isEmpty ? '' : entry.key),
+                name:
+                    names[entry.key]?.localizedName() ??
+                    (entry.key.isEmpty ? '' : entry.key),
                 count: entry.value,
                 imageUrl: names[entry.key]?.imageUrl ?? '',
               ),

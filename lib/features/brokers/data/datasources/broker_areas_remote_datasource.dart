@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:real_state/core/constants/user_role.dart';
 import 'package:real_state/features/models/entities/property.dart';
 import 'package:real_state/features/properties/data/datasources/location_area_remote_datasource.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart';
 
 class BrokerAreasRemoteDataSource {
   final PropertiesRepository _propertiesRepository;

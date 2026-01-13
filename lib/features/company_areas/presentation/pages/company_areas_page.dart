@@ -40,29 +40,37 @@ class _CompanyAreasPageState extends State<CompanyAreasPage> {
       appBar: CustomAppBar(title: 'home_company_areas_title'),
       body: BlocConsumer<CompanyAreasBloc, CompanyAreasState>(
         listener: (context, state) {
-          if (state is CompanyAreasLoadSuccess || state is CompanyAreasFailure) {
+          if (state is CompanyAreasLoadSuccess ||
+              state is CompanyAreasFailure) {
             _refreshController.refreshCompleted();
             _refreshController.loadComplete();
           }
         },
         builder: (context, state) {
           final isInitialLoading =
-              state is CompanyAreasInitial || state is CompanyAreasLoadInProgress;
+              state is CompanyAreasInitial ||
+              state is CompanyAreasLoadInProgress;
 
           if (state is CompanyAreasFailure) {
             return AppErrorView(
               message: state.message,
-              onRetry: () => context.read<CompanyAreasBloc>().add(const CompanyAreasRequested()),
+              onRetry: () => context.read<CompanyAreasBloc>().add(
+                const CompanyAreasRequested(),
+              ),
             );
           }
 
-          final areas = state is CompanyAreasLoadSuccess ? state.areas : const [];
+          final areas = state is CompanyAreasLoadSuccess
+              ? state.areas
+              : const [];
 
           return SmartRefresher(
             controller: _refreshController,
             enablePullDown: true,
             enablePullUp: false,
-            onRefresh: () => context.read<CompanyAreasBloc>().add(const CompanyAreasRequested()),
+            onRefresh: () => context.read<CompanyAreasBloc>().add(
+              const CompanyAreasRequested(),
+            ),
             child: AppSkeletonizer(
               enabled: isInitialLoading,
               child: ListView(
@@ -75,7 +83,10 @@ class _CompanyAreasPageState extends State<CompanyAreasPage> {
                         area: area,
                         onTap: area.areaId.isNotEmpty
                             ? () {
-                                context.push('/company/area/${area.areaId}', extra: area.name);
+                                context.push(
+                                  '/company/area/${area.areaId}',
+                                  extra: area.name,
+                                );
                               }
                             : null,
                       ),

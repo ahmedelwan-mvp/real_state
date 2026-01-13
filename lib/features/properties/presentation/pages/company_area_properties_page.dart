@@ -6,13 +6,16 @@ import 'package:real_state/core/components/base_gradient_page.dart';
 import 'package:real_state/core/components/custom_app_bar.dart';
 import 'package:real_state/features/properties/presentation/selection/property_selection_policy.dart';
 import 'package:real_state/features/properties/presentation/selection/selection_app_bar.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
 import 'package:real_state/features/categories/presentation/widgets/filter_bottom_sheet.dart';
+import 'package:real_state/features/location/domain/repositories/location_areas_repository.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
 import 'package:real_state/features/models/entities/property.dart';
+import 'package:real_state/features/properties/domain/usecases/get_company_properties_page_usecase.dart';
 import 'package:real_state/features/properties/presentation/bloc/company_properties_bloc.dart';
 import 'package:real_state/features/properties/presentation/bloc/company_properties_event.dart';
 import 'package:real_state/features/properties/presentation/bloc/company_properties_state.dart';
+import 'package:real_state/features/properties/presentation/bloc/property_mutations_bloc.dart';
 import 'package:real_state/features/properties/presentation/utils/multi_pdf_share.dart';
 import 'package:real_state/features/properties/presentation/widgets/property_paginated_list_view.dart';
 
@@ -20,10 +23,15 @@ class CompanyAreaPropertiesPage extends StatefulWidget {
   final String areaId;
   final String areaName;
 
-  const CompanyAreaPropertiesPage({super.key, required this.areaId, required this.areaName});
+  const CompanyAreaPropertiesPage({
+    super.key,
+    required this.areaId,
+    required this.areaName,
+  });
 
   @override
-  State<CompanyAreaPropertiesPage> createState() => _CompanyAreaPropertiesPageState();
+  State<CompanyAreaPropertiesPage> createState() =>
+      _CompanyAreaPropertiesPageState();
 }
 
 class _CompanyAreaPropertiesPageState extends State<CompanyAreaPropertiesPage> {
@@ -38,8 +46,11 @@ class _CompanyAreaPropertiesPageState extends State<CompanyAreaPropertiesPage> {
     super.initState();
     _refreshController = RefreshController();
     _filter = PropertyFilter(locationAreaId: widget.areaId);
-    _bloc = CompanyPropertiesBloc(context.read(), context.read(), context.read())
-      ..add(CompanyPropertiesStarted(filter: _filter));
+    _bloc = CompanyPropertiesBloc(
+      context.read<GetCompanyPropertiesPageUseCase>(),
+      context.read<LocationAreasRepository>(),
+      context.read<PropertyMutationsBloc>(),
+    )..add(CompanyPropertiesStarted(filter: _filter));
   }
 
   @override
@@ -66,9 +77,14 @@ class _CompanyAreaPropertiesPageState extends State<CompanyAreaPropertiesPage> {
   }
 
   Future<void> _shareSelected(List<Property> properties) async {
-    final selectedProps = properties.where((p) => _selected.contains(p.id)).toList();
+    final selectedProps = properties
+        .where((p) => _selected.contains(p.id))
+        .toList();
     if (selectedProps.isEmpty) return;
-    await shareMultiplePropertyPdfs(context: context, properties: selectedProps);
+    await shareMultiplePropertyPdfs(
+      context: context,
+      properties: selectedProps,
+    );
     _clearSelection();
   }
 
@@ -84,7 +100,9 @@ class _CompanyAreaPropertiesPageState extends State<CompanyAreaPropertiesPage> {
   }
 
   Future<void> _openFilters(Map<String, LocationArea> areaNames) async {
-    final areaLabel = widget.areaName.isNotEmpty ? widget.areaName : 'area_unavailable'.tr();
+    final areaLabel = widget.areaName.isNotEmpty
+        ? widget.areaName
+        : 'area_unavailable'.tr();
     final list = [areaNames[widget.areaId] ?? _fallbackArea(areaLabel)];
     await showModalBottomSheet<void>(
       context: context,
@@ -119,7 +137,9 @@ class _CompanyAreaPropertiesPageState extends State<CompanyAreaPropertiesPage> {
         appBar: _selectionMode
             ? SelectionAppBar(
                 selectedCount: _selected.length,
-                policy: const PropertySelectionPolicy(actions: [PropertyBulkAction.share]),
+                policy: const PropertySelectionPolicy(
+                  actions: [PropertyBulkAction.share],
+                ),
                 actionCallbacks: {
                   PropertyBulkAction.share: () => _shareSelected(_currentItems),
                 },
@@ -130,19 +150,20 @@ class _CompanyAreaPropertiesPageState extends State<CompanyAreaPropertiesPage> {
             ? null
             : Padding(
                 padding: const EdgeInsets.only(bottom: 80),
-                child: BlocBuilder<CompanyPropertiesBloc, CompanyPropertiesState>(
-                  builder: (context, state) {
-                    final areaNames = state is CompanyPropertiesLoadSuccess
-                        ? state.areaNames
-                        : (state is CompanyPropertiesFailure
-                              ? state.areaNames
-                              : const <String, LocationArea>{});
-                    return FloatingActionButton(
-                      onPressed: () => _openFilters(areaNames),
-                      child: const Icon(Icons.filter_list),
-                    );
-                  },
-                ),
+                child:
+                    BlocBuilder<CompanyPropertiesBloc, CompanyPropertiesState>(
+                      builder: (context, state) {
+                        final areaNames = state is CompanyPropertiesLoadSuccess
+                            ? state.areaNames
+                            : (state is CompanyPropertiesFailure
+                                  ? state.areaNames
+                                  : const <String, LocationArea>{});
+                        return FloatingActionButton(
+                          onPressed: () => _openFilters(areaNames),
+                          child: const Icon(Icons.filter_list),
+                        );
+                      },
+                    ),
               ),
         body: BaseGradientPage(
           child: BlocConsumer<CompanyPropertiesBloc, CompanyPropertiesState>(
@@ -161,16 +182,22 @@ class _CompanyAreaPropertiesPageState extends State<CompanyAreaPropertiesPage> {
             },
             builder: (context, state) {
               final isInitialLoading =
-                  (state is CompanyPropertiesInitial || state is CompanyPropertiesLoadInProgress) &&
-                  (state is! CompanyPropertiesLoadInProgress || state.items.isEmpty);
+                  (state is CompanyPropertiesInitial ||
+                      state is CompanyPropertiesLoadInProgress) &&
+                  (state is! CompanyPropertiesLoadInProgress ||
+                      state.items.isEmpty);
 
               final rawItems = (state is CompanyPropertiesLoadSuccess)
                   ? state.items
                   : (state is CompanyPropertiesLoadInProgress
                         ? state.items
-                        : (state is CompanyPropertiesFailure ? state.items : const <Property>[]));
+                        : (state is CompanyPropertiesFailure
+                              ? state.items
+                              : const <Property>[]));
 
-              final items = rawItems.where((p) => p.locationAreaId == widget.areaId).toList();
+              final items = rawItems
+                  .where((p) => p.locationAreaId == widget.areaId)
+                  .toList();
 
               if (!isInitialLoading) {
                 _currentItems = items;
@@ -182,7 +209,9 @@ class _CompanyAreaPropertiesPageState extends State<CompanyAreaPropertiesPage> {
                         ? state.hasMore
                         : (state is CompanyPropertiesLoadMoreInProgress
                               ? state.hasMore
-                              : (state is CompanyPropertiesFailure ? state.hasMore : false)));
+                              : (state is CompanyPropertiesFailure
+                                    ? state.hasMore
+                                    : false)));
 
               final stateFilter = (state is CompanyPropertiesLoadSuccess)
                   ? state.filter
@@ -190,7 +219,9 @@ class _CompanyAreaPropertiesPageState extends State<CompanyAreaPropertiesPage> {
                         ? state.filter
                         : (state is CompanyPropertiesLoadMoreInProgress
                               ? state.filter
-                              : (state is CompanyPropertiesFailure ? state.filter : null)));
+                              : (state is CompanyPropertiesFailure
+                                    ? state.filter
+                                    : null)));
               if (stateFilter != null) {
                 _filter = stateFilter;
               }
@@ -200,7 +231,9 @@ class _CompanyAreaPropertiesPageState extends State<CompanyAreaPropertiesPage> {
                 items: items,
                 isLoading: isInitialLoading,
                 isError: state is CompanyPropertiesFailure && items.isEmpty,
-                errorMessage: state is CompanyPropertiesFailure ? state.message : null,
+                errorMessage: state is CompanyPropertiesFailure
+                    ? state.message
+                    : null,
                 hasMore: hasMore,
                 startAreaName: widget.areaName,
                 onRefresh: _refresh,
@@ -209,15 +242,19 @@ class _CompanyAreaPropertiesPageState extends State<CompanyAreaPropertiesPage> {
                       ? state.lastDoc
                       : (state is CompanyPropertiesLoadMoreInProgress
                             ? state.lastDoc
-                            : (state is CompanyPropertiesFailure ? state.lastDoc : null));
+                            : (state is CompanyPropertiesFailure
+                                  ? state.lastDoc
+                                  : null));
                   _bloc.add(CompanyPropertiesLoadMore(startAfter: lastDoc));
                 },
-                onRetry: () => _bloc.add(CompanyPropertiesStarted(filter: _filter)),
+                onRetry: () =>
+                    _bloc.add(CompanyPropertiesStarted(filter: _filter)),
                 selectionMode: _selectionMode,
                 selectedIds: _selected,
                 onToggleSelection: _toggleSelection,
                 emptyMessage: 'no_properties_title'.tr(),
-                emptyAction: () => _bloc.add(CompanyPropertiesStarted(filter: _filter)),
+                emptyAction: () =>
+                    _bloc.add(CompanyPropertiesStarted(filter: _filter)),
               );
             },
           ),

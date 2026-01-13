@@ -1,8 +1,8 @@
 import 'package:real_state/core/constants/user_role.dart';
 import 'package:real_state/features/models/entities/property.dart';
-import 'package:real_state/features/users/data/repositories/users_repository.dart';
-import 'package:real_state/features/users/domain/entities/managed_user.dart';
 import 'package:real_state/features/properties/domain/property_owner_scope.dart';
+import 'package:real_state/features/users/domain/entities/managed_user.dart';
+import 'package:real_state/features/users/domain/repositories/users_lookup_repository.dart';
 
 /// Resolves which users should receive a "property added" notification.
 /// Rules:
@@ -11,7 +11,7 @@ import 'package:real_state/features/properties/domain/property_owner_scope.dart'
 class ResolvePropertyAddedTargetsUseCase {
   ResolvePropertyAddedTargetsUseCase(this._usersRepository);
 
-  final UsersRepository _usersRepository;
+  final UsersLookupRepository _usersRepository;
 
   Future<List<String>> call(Property property) async {
     if (property.ownerScope == PropertyOwnerScope.company) {

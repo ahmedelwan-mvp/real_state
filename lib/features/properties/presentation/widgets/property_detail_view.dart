@@ -308,6 +308,7 @@ class _Header extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final textTheme = theme.textTheme;
+    final locale = Localizations.localeOf(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -342,7 +343,7 @@ class _Header extends StatelessWidget {
           Text(
             PriceFormatter.format(
               price!,
-              locale: context.locale.toString(),
+              locale: locale.toString(),
               currency: AED,
             ),
             style: textTheme.headlineMedium?.copyWith(

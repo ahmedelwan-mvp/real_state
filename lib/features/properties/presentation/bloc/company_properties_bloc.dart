@@ -5,10 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:real_state/core/constants/ui_constants.dart';
 import 'package:real_state/core/handle_errors/error_mapper.dart';
 import 'package:real_state/core/utils/single_flight_guard.dart';
-import 'package:real_state/features/categories/data/models/property_filter.dart';
+import 'package:real_state/features/categories/domain/entities/property_filter.dart';
 import 'package:real_state/features/models/entities/location_area.dart';
 import 'package:real_state/features/models/entities/property.dart';
-import 'package:real_state/features/properties/data/datasources/location_area_remote_datasource.dart';
+import 'package:real_state/features/location/domain/repositories/location_areas_repository.dart';
 import 'package:real_state/features/properties/domain/property_owner_scope.dart';
 import 'package:real_state/features/properties/domain/usecases/get_company_properties_page_usecase.dart';
 import 'package:real_state/features/properties/presentation/bloc/property_mutations_bloc.dart';
@@ -20,11 +20,11 @@ import 'company_properties_state.dart';
 class CompanyPropertiesBloc
     extends Bloc<CompanyPropertiesEvent, CompanyPropertiesState> {
   final GetCompanyPropertiesPageUseCase _getCompanyPage;
-  final LocationAreaRemoteDataSource _areaDs;
+  final LocationAreasRepository _areaRepo;
   final PropertyMutationsBloc _mutations;
   StreamSubscription<PropertyMutation>? _mutationSub;
 
-  CompanyPropertiesBloc(this._getCompanyPage, this._areaDs, this._mutations)
+  CompanyPropertiesBloc(this._getCompanyPage, this._areaRepo, this._mutations)
     : super(const CompanyPropertiesInitial()) {
     on<CompanyPropertiesStarted>(_onStarted);
     on<CompanyPropertiesRefreshed>(_onRefreshed);
@@ -279,7 +279,7 @@ class CompanyPropertiesBloc
         .toList();
     if (ids.isEmpty) return {};
     try {
-      return await _areaDs.fetchNamesByIds(ids);
+      return await _areaRepo.fetchNamesByIds(ids);
     } catch (_) {
       return {};
     }

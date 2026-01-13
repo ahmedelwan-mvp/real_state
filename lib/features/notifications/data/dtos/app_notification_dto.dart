@@ -6,8 +6,9 @@ import 'package:real_state/features/notifications/domain/entities/app_notificati
 class AppNotificationDto {
   AppNotificationDto._();
 
-  static CollectionReference<Map<String, dynamic>> collection(FirebaseFirestore firestore) =>
-      firestore.collection(AppCollections.notifications.path);
+  static CollectionReference<Map<String, dynamic>> collection(
+    FirebaseFirestore firestore,
+  ) => firestore.collection(AppCollections.notifications.path);
 
   static AppNotification fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
@@ -41,7 +42,8 @@ class AppNotificationDto {
       }
     }
 
-    final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+    final createdAt =
+        (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
 
     return AppNotification(
       id: doc.id,

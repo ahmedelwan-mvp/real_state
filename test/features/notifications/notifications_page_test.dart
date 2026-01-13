@@ -2,18 +2,21 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:easy_localization/easy_localization.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
 import 'package:real_state/core/constants/user_role.dart';
-import 'package:real_state/features/access_requests/data/repositories/access_requests_repository.dart';
+import 'package:real_state/features/access_requests/domain/repositories/access_requests_repository.dart';
 import 'package:real_state/features/auth/domain/entities/user_entity.dart';
-import 'package:real_state/features/auth/domain/repositories/auth_repository_domain.dart';
 import 'package:real_state/features/models/entities/access_request.dart';
+import 'package:real_state/features/notifications/domain/entities/app_notification.dart';
+import 'package:real_state/features/notifications/domain/entities/notifications_page.dart'
+    as notifications_model;
 import 'package:real_state/features/notifications/presentation/pages/notifications_page.dart';
-import 'package:real_state/features/properties/data/repositories/properties_repository.dart';
+import 'package:real_state/features/properties/domain/repositories/properties_repository.dart'
+    show PageResult;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../../fakes/fake_repositories.dart';
+import '../../helpers/pump_test_app.dart';
 import '../fake_auth_repo/fake_auth_repo.dart';
 
 class _FakeAccessRepo implements AccessRequestsRepository {
@@ -127,44 +130,62 @@ void main() {
       ),
     ];
 
+    final fakeNotifications = FakeNotificationsRepository(
+      initialPages: [
+        notifications_model.NotificationsPage(
+          items: [
+            AppNotification(
+              id: 'n1',
+              type: AppNotificationType.accessRequest,
+              title: 'access_request_title',
+              body: 'Message: please',
+              createdAt: now,
+              isRead: false,
+              requesterName: 'u2',
+              requestId: 'r1',
+              requestStatus: AccessRequestStatus.pending,
+              requestType: AccessRequestType.images,
+              targetUserId: 'owner1',
+              propertyId: 'p1',
+              requestMessage: 'Message: please',
+            ),
+          ],
+          lastDocument: null,
+          hasMore: false,
+        ),
+      ],
+    );
+
     final fakeAuth = FakeAuthRepo(
       const UserEntity(id: 'owner1', email: 'o@x', role: UserRole.owner),
     );
 
-    await tester.pumpWidget(
-      EasyLocalization(
-        supportedLocales: const [Locale('en'), Locale('ar')],
-        path: 'assets/translations',
-        fallbackLocale: const Locale('en'),
-        child: Builder(
-          builder: (context) => MaterialApp(
-            locale: context.locale,
-            supportedLocales: context.supportedLocales,
-            localizationsDelegates: context.localizationDelegates,
-            home: MultiProvider(
-              providers: [
-                Provider<AccessRequestsRepository>.value(value: fakeRepo),
-                Provider<AuthRepositoryDomain>.value(value: fakeAuth),
-              ],
-              child: const NotificationsPage(),
-            ),
-          ),
-        ),
+    await pumpTestApp(
+      tester,
+      const NotificationsPage(),
+      dependencies: TestAppDependencies(
+        authRepositoryOverride: fakeAuth,
+        accessRequestsRepositoryOverride: fakeRepo,
+        notificationsRepositoryOverride: fakeNotifications,
       ),
     );
 
-    await tester.pumpAndSettle();
+    final cardFinder = byKeyStr('notification_card_n1');
+    await pumpUntilFound(tester, cardFinder);
+    expect(cardFinder, findsOneWidget);
+    final acceptFinder = byKeyStr('notification_accept_n1');
+    final rejectFinder = byKeyStr('notification_reject_n1');
+    expect(acceptFinder, findsOneWidget);
+    expect(rejectFinder, findsOneWidget);
 
-    // pending request shown
-    expect(find.text('Requester: u2'), findsOneWidget);
-    expect(find.text('Message: please'), findsOneWidget);
-    expect(find.text('Accept'), findsOneWidget);
+    await tester.tap(acceptFinder);
+    await tester.pump(const Duration(milliseconds: 200));
 
-    // tap accept
-    await tester.tap(find.text('Accept'));
-    await tester.pumpAndSettle();
+    for (var i = 0; i < 15 && tester.any(acceptFinder); i++) {
+      await tester.pump(const Duration(milliseconds: 80));
+    }
 
-    // after accept, the status badge should update to ACCEPTED
-    expect(find.text('ACCEPTED'), findsOneWidget);
+    expect(acceptFinder, findsNothing);
+    expect(rejectFinder, findsNothing);
   });
 }

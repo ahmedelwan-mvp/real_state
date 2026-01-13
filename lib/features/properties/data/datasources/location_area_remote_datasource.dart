@@ -26,7 +26,9 @@ class LocationAreaRemoteDataSource {
       }
       return map;
     } catch (e, st) {
-      debugPrint('fetchNamesByIds failed: ${mapErrorMessage(e, stackTrace: st)}');
+      debugPrint(
+        'fetchNamesByIds failed: ${mapErrorMessage(e, stackTrace: st)}',
+      );
       return {};
     }
   }
@@ -41,7 +43,9 @@ class LocationAreaRemoteDataSource {
       }
       return map;
     } catch (e, st) {
-      debugPrint('fetchAllLocationAreas failed: ${mapErrorMessage(e, stackTrace: st)}');
+      debugPrint(
+        'fetchAllLocationAreas failed: ${mapErrorMessage(e, stackTrace: st)}',
+      );
       return {};
     }
   }
